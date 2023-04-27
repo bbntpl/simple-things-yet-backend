@@ -1,0 +1,43 @@
+{
+	"name": "blog-v1-backend",
+	"version": "1.0.0",
+	"description": "",
+	"main": "app.js",
+	"scripts": {
+		"start": "node app.js",
+		"devstart": "NODE_ENV=development nodemon app.js",
+		"devstart:test": "NODE_ENV=test nodemon app.js",
+		"test": "NODE_ENV=test jest --detectOpenHandles  --verbose --runInBand"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"bcrypt": "^5.1.0",
+		"cors": "^2.8.5",
+		"express": "^4.18.2",
+		"helmet": "^6.1.5",
+		"jsonwebtoken": "^9.0.0",
+		"markdown-it": "^13.0.1",
+		"mongoose": "^7.0.5",
+		"morgan": "^1.10.0",
+		"nodemon": "^2.0.22",
+		"validator": "^13.9.0"
+	},
+	"devDependencies": {
+		"dotenv": "^16.0.3",
+		"jest": "^29.5.0",
+		"supertest": "^6.3.3"
+	},
+	"jest": {
+		"testEnvironment": "node",
+		"globalTeardown": "./__tests__/teardown.js",
+		"testTimeout": 5000,
+		"testPathIgnorePatterns": [
+			"/node_modules/",
+			"/__tests__/teardown.js"
+		],
+		"coveragePathIgnorePatterns": [
+			"/node_modules/"
+		]
+	}
+}
