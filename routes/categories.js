@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateAuthor } = require('../utils/middleware');
+const { authenticateUser } = require('../utils/middleware');
 const {
   categoryCreate,
 	categories,
@@ -7,6 +7,7 @@ const {
   categoryUpdate,
   categoryDelete,
 } = require('../controllers/category');
+const Author = require('../models/author');
 
 const router = express.Router();
 
@@ -17,12 +18,12 @@ router.get('/', categories);
 router.get('/:id', categoryFetch);
 
 // Create a new category
-router.post('/create', authenticateAuthor, categoryCreate);
+router.post('/create', authenticateUser(Author), categoryCreate);
 
 // Update an existing category
-router.put('/:id', authenticateAuthor, categoryUpdate);
+router.put('/:id', authenticateUser(Author), categoryUpdate);
 
 // Deletle an existing category
-router.delete('/:id', authenticateAuthor, categoryDelete);
+router.delete('/:id', authenticateUser(Author), categoryDelete);
 
 module.exports = router;

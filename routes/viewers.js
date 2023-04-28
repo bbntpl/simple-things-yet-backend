@@ -7,6 +7,8 @@ const {
 	viewerDelete,
 	viewerUpdate,
 } = require('../controllers/viewer');
+const Viewer = require('../models/viewer');
+const { authenticateUser } = require('../utils/middleware');
 
 const router = express.Router();
 
@@ -14,15 +16,15 @@ router.get('/', viewers);
 
 router.get('/:id', viewerFetch);
 
-router.put('/:id/update', viewerUpdate);
+router.put('/:id/update', authenticateUser(Viewer), viewerUpdate);
 
 // Register as a new user/viewer
 router.post('/:id/register', viewerRegister);
 
 // Login as an existing user/viewer
-router.post('/:id/login', viewerLogin);
+router.post('/:id/login', authenticateUser(Viewer), viewerLogin);
 
 // Delete the account of user/viwer
-router.delete('/:id/delete', viewerDelete)
+router.delete('/:id/delete',authenticateUser(Viewer), viewerDelete)
 
 module.exports = router;

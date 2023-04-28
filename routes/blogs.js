@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateAuthor } = require('../utils/middleware');
+const { authenticateUser } = require('../utils/middleware');
 const {
   blogCreate,
 	blogFetch,
@@ -7,6 +7,7 @@ const {
   blogUpdate,
   blogDelete,
 } = require('../controllers/blog');
+const Author = require('../models/author');
 
 const router = express.Router();
 
@@ -17,12 +18,12 @@ router.get('/', blogs);
 router.get('/:id', blogFetch);
 
 // Create a new blog
-router.post('/', authenticateAuthor, blogCreate);
+router.post('/', authenticateUser(Author), blogCreate);
 
 // Update an existing blog
-router.put('/:id', authenticateAuthor, blogUpdate);
+router.put('/:id', authenticateUser(Author), blogUpdate);
 
 // Delete a blog
-router.delete('/:id', authenticateAuthor, blogDelete);
+router.delete('/:id', authenticateUser(Author), blogDelete);
 
 module.exports = router;

@@ -4,21 +4,25 @@ const jwt = require('jsonwebtoken');
 const Author = require('../models/author');
 const { SECRET_KEY } = require('../utils/config');
 
-exports.authorUpdate = async (req, res) => {
+exports.authorUpdate = async (req, res, next) => {
 	const { name, bio } = req.body;
-	const authorId = req.author.id;
+	try {
+		const author = req.user;
 
-	const updatedAuthor = await Author.findByIdAndUpdate(
-		authorId,
-		{ $set: { name, bio } },
-		{ new: true }
-	);
+    const updatedAuthor = await Author.findByIdAndUpdate(
+      author.id,
+      { name, bio },
+      { new: true }
+    );
 
-	if (!updatedAuthor) {
-		return res.status(404).json({ error: 'Author not found' });
+		if (!updatedAuthor) {
+			return res.status(404).json({ error: 'Author not found' });
+		}
+
+		return res.json(updatedAuthor);
+	} catch (err) {
+		next(err);
 	}
-
-	res.json(updatedAuthor);
 }
 
 exports.authorFetch = async (req, res) => {
@@ -31,21 +35,29 @@ exports.authorFetch = async (req, res) => {
 	res.json(author);
 }
 
-exports.authorRegister = async (req, res) => {
+exports.authorRegister = async (req, res, next) => {
 	const { email, username, password } = req.body;
+	const numOfAuthors = await Author.countDocuments({});
+
+	if (numOfAuthors >= 1) {
+		return res.status(403)
+			.json('message: You are only allowed to have one account');
+	}
 
 	const passwordHash = await bcrypt.hash(password, 10);
-
 	const author = new Author({
-		name: '',
-		bio: '',
+		name: username,
+		bio: 'Update this bio',
 		email,
 		username,
 		passwordHash,
 	});
 
-	const savedAuthor = await author.save();
-	res.status(201).json(savedAuthor);
+	await author.save()
+		.then(savedDoc => {
+			res.status(201).json(savedDoc);
+		})
+		.catch(err => next(err));
 }
 
 exports.authorLogin = async (req, res) => {
@@ -53,11 +65,11 @@ exports.authorLogin = async (req, res) => {
 
 	const author = await Author.findOne({ username });
 
-	const passwordCorrect = author
+	const isPasswordCorrect = author
 		? await bcrypt.compare(password, author.passwordHash)
 		: false;
 
-	if (!(author && passwordCorrect)) {
+	if (!(author && isPasswordCorrect)) {
 		return res.status(401).json({ error: 'invalid username or password' });
 	}
 
@@ -68,5 +80,5 @@ exports.authorLogin = async (req, res) => {
 
 	const token = jwt.sign(authorForToken, SECRET_KEY);
 
-	res.json({ token, username: author.username });
+	res.json({ token, username: author });
 }

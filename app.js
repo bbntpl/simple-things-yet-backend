@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 
 const {
 	logger,
+	tokenExtractor,
 	errorHandler,
 	serverErrorHandler,
 	unknownEndpoint
@@ -12,6 +13,7 @@ const {
 const {
 	PORT,
 	MONGODB_URI,
+	NODE_ENV,
 } = require('./utils/config');
 const authorRouter = require('./routes/author');
 const blogsRouter = require('./routes/blogs');
@@ -35,12 +37,14 @@ async function connectDB() {
 async function initApp() {
 	try {
 		await connectDB()
-		app.listen(PORT, function (err) {
+		const server = app.listen(PORT, function (err) {
 			if (err) {
 				console.log(`Error: ${err}`);
 			}
 			console.log(`App is connected to port ${PORT}`);
 		});
+
+		return server;
 	} catch (err) {
 		console.log(`Error: ${err}`);
 	}
@@ -52,6 +56,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(logger);
+app.use(tokenExtractor);
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -67,6 +72,8 @@ app.use(unknownEndpoint);
 app.use(errorHandler);
 app.use(serverErrorHandler);
 
-initApp()
+if(NODE_ENV !== 'test') {
+	initApp();
+}
 
-module.exports = app;
+module.exports = { app, initApp };

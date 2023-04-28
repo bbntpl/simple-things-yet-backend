@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { authenticateAuthor } = require('../utils/middleware');
+const { authenticateUser } = require('../utils/middleware');
 
 const {
 	authorUpdate,
@@ -8,16 +8,17 @@ const {
 	authorRegister,
 	authorLogin
 } = require('../controllers/author');
+const Author = require('../models/author');
 
 const router = express.Router();
 
 router.get('/', authorFetch);
 
-router.post('/update', authenticateAuthor, authorUpdate);
-
 router.post('/register', authorRegister);
 
 router.post('/login', authorLogin);
+
+router.put('/update', authenticateUser(Author), authorUpdate);
 
 module.exports = router;
 

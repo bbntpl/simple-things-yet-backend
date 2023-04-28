@@ -16,7 +16,6 @@ const authorSchema = new Schema({
 	email: {
 		type: String,
 		required: true,
-		unique: true,
 		trim: true,
 		lowercase: true,
 		validate: {
@@ -27,7 +26,6 @@ const authorSchema = new Schema({
 	},
 	username: {
 		type: String,
-		unique: true,
 		required: true,
 		min: 4,
 		max: 20,

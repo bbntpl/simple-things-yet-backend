@@ -2,23 +2,23 @@ const supertest = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-const app = require('../app');
+const { app, initApp } = require('../app');
 const { MONGODB_URI } = require('../utils/config');
 const Author = require('../models/author');
+const {
+	loginAuthor
+} = require('../utils/testHelpers');
 
+const {
+	sampleAuthor1,
+	sampleAuthor2,
+} = require('../utils/testDataset');
+
+let server;
 const request = supertest(app);
 
-const sampleAuthor = {
-	name: 'Random Author',
-	bio: 'This is a random author bio.',
-	email: 'first.author@example.com',
-	username: 'randauthor',
-	password: 'SamplePass123',
-};
-
-const getAuthorWithHashedPassword = async () => {
+const getAuthorWithHashedPassword = async (sampleAuthor) => {
 	const passwordHash = await bcrypt.hash(sampleAuthor.password, 10);
-
 	return {
 		name: sampleAuthor.name,
 		bio: sampleAuthor.bio,
@@ -29,6 +29,7 @@ const getAuthorWithHashedPassword = async () => {
 }
 
 beforeAll(async () => {
+	server = await initApp();
 	await Author.deleteMany({});
 });
 
@@ -40,10 +41,9 @@ describe('Test database', () => {
 });
 
 describe('View author', () => {
-	let author;
 	beforeEach(async () => {
-		author = await new Author(await getAuthorWithHashedPassword()).save();
 		await Author.deleteMany({});
+		await new Author(await getAuthorWithHashedPassword(sampleAuthor1)).save();
 	})
 
 	test('should fetch author object', async () => {
@@ -52,19 +52,10 @@ describe('View author', () => {
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
 
-		expect(response.body).toHaveProperty(name, 'Random Author');
-		expect(response.body).toHaveProperty(bio, 'This is a random author bio.');
-		expect(response.body).toHaveProperty(email, 'first.author@example.com');
-		expect(response.body).toHaveProperty(username, 'randauthor');
-	})
-
-	test('should only have author', async () => {
-		const response = await request
-			.get('/api/author')
-			// .expect('Content-Type', /application\/json/)
-			.expect(200);
-
-		expect(response.body).toHaveLength(1);
+		expect(response.body).toHaveProperty('name', 'Random Author');
+		expect(response.body).toHaveProperty('bio', 'This is a random author bio.');
+		expect(response.body).toHaveProperty('email', 'first.author@example.com');
+		expect(response.body).toHaveProperty('username', 'randauthor');
 	})
 
 	test('should not show passwordHash', async () => {
@@ -77,29 +68,62 @@ describe('View author', () => {
 	})
 });
 
-describe('Registration/Login of author', () => {
+describe('Registration of author', () => {
 	beforeEach(async () => {
-		await new Author(await getAuthorWithHashedPassword()).save();
 		await Author.deleteMany({});
 	})
 
 	test('should register a new author account', async () => {
 		const response = await request
 			.post('/api/author/register')
-			.send(sampleAuthor)
+			.send({
+				email: sampleAuthor1.email,
+				username: sampleAuthor1.username,
+				password: sampleAuthor1.password
+			})
 			.expect('Content-Type', /application\/json/)
 			.expect(201);
 
 		const createdAuthor = await Author.findById(response.body.id);
-		expect(createdAuthor.name).toBe(sampleAuthor.name);
+		expect(createdAuthor.name).toBe(sampleAuthor1.username);
+		expect(createdAuthor.username).toBe(sampleAuthor1.username);
+		expect(createdAuthor.email).toBe(sampleAuthor1.email);
 	});
+
+	test('should only allowed to have one author', async () => {
+		await new Author(await getAuthorWithHashedPassword(sampleAuthor1)).save();
+
+		const response = await request
+			.post('/api/author/register')
+			.send({
+				email: sampleAuthor2.email,
+				username: sampleAuthor2.username,
+				password: sampleAuthor1.password
+			})
+			.expect('Content-Type', /application\/json/)
+			.expect(403);
+
+		const createdAuthor = await Author.findById(response.body.id);
+		const numOfAuthors = await Author.countDocuments({});
+
+		expect(response.body).toContain('You are only allowed to have one account');
+		expect(createdAuthor).toBeNull();
+		expect(numOfAuthors).toEqual(1);
+	})
+});
+
+describe('Login of author', () => {
+	beforeEach(async () => {
+		await Author.deleteMany({});
+		await new Author(await getAuthorWithHashedPassword(sampleAuthor1)).save();
+	})
 
 	test('should log in with valid credentials', async () => {
 		const response = await request
 			.post('/api/author/login')
 			.send({
-				username: sampleAuthor.username,
-				password: sampleAuthor.password
+				username: sampleAuthor1.username,
+				password: sampleAuthor1.password
 			})
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
@@ -111,7 +135,7 @@ describe('Registration/Login of author', () => {
 		await request
 			.post('/api/author/login')
 			.send({
-				username: sampleAuthor.username,
+				username: sampleAuthor1.username,
 				password: 'notthepassword'
 			})
 			.expect('Content-Type', /application\/json/)
@@ -123,21 +147,15 @@ describe('Update of author', () => {
 	let token;
 
 	beforeEach(async () => {
-		await new Author(await getAuthorWithHashedPassword()).save();
-		const passwordHash = await bcrypt.hash(sampleAuthor.password, 10);
-		const response = await request
-			.post('/api/author/login')
-			.send({
-				username: sampleAuthor.username,
-				passwordHash
-			});
+		await Author.deleteMany({});
+		await new Author(await getAuthorWithHashedPassword(sampleAuthor1)).save();
 
-		token = response.body.token;
+		token = await loginAuthor(request, sampleAuthor1);
 	});
 
 	test('should successfuly change name and bio', async () => {
 		const response = await request
-			.put('/author/update')
+			.put('/api/author/update')
 			.send({
 				name: 'B.B. Antipolo',
 				bio: 'Lifelong learner forever'
@@ -153,4 +171,6 @@ describe('Update of author', () => {
 
 afterAll(async () => {
 	await mongoose.connection.close();
+	server.close();
+	console.log('Author Tests: Close the server')
 });

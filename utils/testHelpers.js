@@ -5,6 +5,11 @@ const Viewer = require('../models/viewer');
 const Category = require('../models/category');
 const Blog = require('../models/blog');
 const Comment = require('../models/comment');
+const {
+	sampleAuthor1,
+	sampleViewer1,
+	sampleBlog1,
+} = require('../utils/testDataset');
 
 const deleteDbsForBlogTests = async () => {
 	await Author.deleteMany({});
@@ -12,43 +17,88 @@ const deleteDbsForBlogTests = async () => {
 	await Blog.deleteMany({});
 }
 
-const deleteDbs = async () => {
-	await Author.deleteMany({});
-	await Viewer.deleteMany({});
-	await Category.deleteMany({});
-	await Blog.deleteMany({});
-	await Comment.deleteMany({});
-}
+const createInitialAuthor = async (sampleAuthor = sampleAuthor1) => {
+	const { password, ...authorWithoutPassword } = sampleAuthor;
 
-const createInitialAuthor = async ({
-	name = 'Test Author',
-	username = 'Test Username',
-	bio = 'Test Bio',
-	email = 'testauthor@gmail.com',
-	password = 'testpassword',
-} = {}) => {
-	const passwordHash = await bcrypt.hash(password, 10);
-
-	const author = new Author({ name, bio, email, username, passwordHash });
+	const passwordHash = await bcrypt.hash('testpassword', 10);
+	const author = new Author({
+		...authorWithoutPassword,
+		passwordHash,
+	});
 	await author.save();
+
 	return author;
 };
 
-const createInitialViewer = async ({
-	username = 'Test Username',
-	name = 'Test Viewer',
-	password = 'testpassword',
-} = {}) => {
-	const passwordHash = await bcrypt.hash(password, 10);
+const createInitialViewer = async (sampleViewer = sampleViewer1) => {
+	const { password, ...viewerWithoutPassword } = sampleViewer;
 
-	const viewer = new Viewer({ name, username, passwordHash });
+	const passwordHash = await bcrypt.hash('testpassword', 10);
+	const viewer = new Viewer({
+		...viewerWithoutPassword,
+		passwordHash
+	});
+	
 	await viewer.save();
+
 	return viewer;
 };
 
+const populateBlogsDb = async (sampleBlog = sampleBlog1) => {
+	const author = await createInitialAuthor();
+	const viewer = await createInitialViewer();
+	await Blog.create({
+		...sampleBlog,
+		author: author.id,
+		likes: [viewer.id],
+	});
+};
+
+const loginAuthor = async (api, author) => {
+	const response = await api
+		.post('/api/author/login')
+		.send({
+			username: author.username,
+			password: author.password
+		});
+
+	return response.body.token;
+}
+
+const blogsInDb = async () => {
+	const blogs = await Blog.find({})
+	return blogs.map(blog => blog.toJSON())
+}
+
+const commentsInDb = async () => {
+	const comments = await Comment.find({})
+	return comments.map(comment => comment.toJSON())
+}
+
+const authorsInDb = async () => {
+	const authors = await Author.find({})
+	return authors.map(author => author.toJSON())
+}
+
+const viewersInDb = async () => {
+	const viewers = await Viewer.find({})
+	return viewers.map(viewer => viewer.toJSON())
+}
+
+const categoriesInDb = async () => {
+	const categories = await Category.find({});
+	return categories.map(category => category.toJSON())
+}
+
 module.exports = {
-	deleteDbs,
 	deleteDbsForBlogTests,
 	createInitialAuthor,
 	createInitialViewer,
+	loginAuthor,
+	populateBlogsDb,
+	authorsInDb,
+	blogsInDb,
+	categoriesInDb,
+	commentsInDb,
+	viewersInDb,
 };

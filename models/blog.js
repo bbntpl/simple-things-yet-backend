@@ -11,6 +11,10 @@ const blogSchema = new Schema({
 		type: String,
 		required: true
 	},
+	author: {
+		type: Schema.Types.ObjectId,
+		ref: 'Author'
+	},
 	likes: [
 		{
 			type: Schema.Types.ObjectId,

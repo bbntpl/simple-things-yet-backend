@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateViewer } = require('../utils/middleware');
+const { authenticateUser } = require('../utils/middleware');
 const {
   commentCreate,
 	comments,
@@ -7,6 +7,7 @@ const {
   commentUpdate,
   commentDelete,
 } = require('../controllers/comment');
+const Viewer = require('../models/viewer');
 
 const router = express.Router();
 
@@ -17,12 +18,12 @@ router.get('/', comments);
 router.get('/', commentFetch);
 
 // Create a specific comment
-router.post('/', authenticateViewer, commentCreate);
+router.post('/', authenticateUser(Viewer), commentCreate);
 
 // Update a specific comment
-router.put('/:id', authenticateViewer, commentUpdate);
+router.put('/:id', authenticateUser(Viewer), commentUpdate);
 
 // Delete an existing comment
-router.delete('/:id', authenticateViewer, commentDelete);
+router.delete('/:id', authenticateUser(Viewer), commentDelete);
 
 module.exports = router;
