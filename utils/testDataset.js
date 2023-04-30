@@ -38,7 +38,7 @@ exports.sampleCategory1 = {
 	description: 'This area is about technologies and AIs'
 }
 exports.sampleCategory2 = {
-	username: 'health',
+	name: 'health',
 	description: 'This area is how to maintain healthiness'
 }
 
@@ -58,6 +58,6 @@ exports.sampleComment1 = {
 	content: 'What is the hidden meaning of this article?'
 }
 
-exports.sampleBlog2 = {
+exports.sampleComment2 = {
 	comment: 'So far, what\'s your main opinion on the latest major changes of that technology?',
 }

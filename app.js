@@ -65,7 +65,7 @@ app.use('/api/author', authorRouter);
 app.use('/api/blogs', blogsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/comments', commentsRouter);
-app.use('/api/viewers', viewersRouter);
+app.use('/api/viewer', viewersRouter);
 
 // Setup error handlers as middleware
 app.use(unknownEndpoint);

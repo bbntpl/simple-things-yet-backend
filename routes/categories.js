@@ -18,7 +18,7 @@ router.get('/', categories);
 router.get('/:id', categoryFetch);
 
 // Create a new category
-router.post('/create', authenticateUser(Author), categoryCreate);
+router.post('/', authenticateUser(Author), categoryCreate);
 
 // Update an existing category
 router.put('/:id', authenticateUser(Author), categoryUpdate);

@@ -12,17 +12,17 @@ const { authenticateUser } = require('../utils/middleware');
 
 const router = express.Router();
 
-router.get('/', viewers);
+router.get('/all', viewers);
 
 router.get('/:id', viewerFetch);
 
 router.put('/:id/update', authenticateUser(Viewer), viewerUpdate);
 
 // Register as a new user/viewer
-router.post('/:id/register', viewerRegister);
+router.post('/register', viewerRegister);
 
 // Login as an existing user/viewer
-router.post('/:id/login', authenticateUser(Viewer), viewerLogin);
+router.post('/login', authenticateUser(Viewer), viewerLogin);
 
 // Delete the account of user/viwer
 router.delete('/:id/delete',authenticateUser(Viewer), viewerDelete)
