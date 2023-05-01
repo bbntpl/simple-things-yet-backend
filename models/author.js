@@ -8,10 +8,12 @@ const authorSchema = new Schema({
 		type: String,
 		required: true,
 		trim: true,
+		default: 'Unnamed Author'
 	},
 	bio: {
 		type: String,
-		required: true
+		required: true,
+		default: 'Write something here'
 	},
 	email: {
 		type: String,
@@ -46,17 +48,17 @@ const authorSchema = new Schema({
 			ref: 'Comment'
 		}
 	],
-})
+});
 
 // Transform output after converting it to JSON
 authorSchema.set('toJSON', {
 	transform: function (_, returnedObject) {
 		returnedObject.id = returnedObject._id.toString();
 		delete returnedObject._id;
-		delete returnedObject.__v
+		delete returnedObject.__v;
 		delete returnedObject.passwordHash;
 	},
-})
+});
 
 const Author = mongoose.model('Author', authorSchema);
 module.exports = Author;

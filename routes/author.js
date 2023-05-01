@@ -6,7 +6,8 @@ const {
 	authorUpdate,
 	authorFetch,
 	authorRegister,
-	authorLogin
+	authorLogin,
+	validateAuthor
 } = require('../controllers/author');
 const Author = require('../models/author');
 
@@ -14,7 +15,7 @@ const router = express.Router();
 
 router.get('/', authorFetch);
 
-router.post('/register', authorRegister);
+router.post('/register',validateAuthor, authorRegister);
 
 router.post('/login', authorLogin);
 

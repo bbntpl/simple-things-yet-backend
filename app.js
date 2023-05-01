@@ -48,7 +48,6 @@ async function initApp() {
 	} catch (err) {
 		console.log(`Error: ${err}`);
 	}
-
 }
 
 //Use middleware functions

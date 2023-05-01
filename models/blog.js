@@ -45,7 +45,7 @@ const blogSchema = new Schema({
 		type: Boolean,
 		default: true
 	}
-})
+});
 
 blogSchema.pre('findOneAndUpdate', function (next) {
 	this.set({ updatedAt: new Date() });
@@ -59,7 +59,7 @@ blogSchema.set('toJSON', {
 		returnedObject.id = returnedObject._id.toString();
 		delete returnedObject._id;
 	},
-})
+});
 
 const Blog = mongoose.model('Blog', blogSchema);
 module.exports = Blog;

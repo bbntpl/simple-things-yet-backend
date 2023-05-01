@@ -6,7 +6,7 @@ exports.categoryCreate = async (req, res, next) => {
 		const isCategoryExists = await Category.findOne({ name });
 
 		if (isCategoryExists) {
-			return res.status(400).json({ message: `Category ${name} exists already` });
+			return res.status(400).json({ error: `Category ${name} exists already` });
 		}
 
 		const newCategory = new Category({ name, description });
@@ -20,7 +20,7 @@ exports.categoryCreate = async (req, res, next) => {
 
 exports.categories = async (req, res, next) => {
 	try {
-		const categories = await Category.find({})
+		const categories = await Category.find({});
 		return res.json(categories);
 	} catch (err) {
 		next(err);
@@ -30,7 +30,7 @@ exports.categories = async (req, res, next) => {
 exports.categoryFetch = async (req, res, next) => {
 	const { id } = req.params;
 	try {
-		const category = await Category.findById(id)
+		const category = await Category.findById(id);
 		return res.json(category);
 	} catch (err) {
 		next(err);
@@ -44,13 +44,13 @@ exports.categoryUpdate = async (req, res, next) => {
 			name: req.body.name,
 			description: req.body.description,
 			blogs: req.body.blogs
-		}
+		};
 
 		const categoryToUpdate = await Category.findByIdAndUpdate(
 			id,
 			updatedCategory,
 			{ new: true }
-		)
+		);
 
 		return res.json(categoryToUpdate);
 	} catch (err) {
@@ -61,11 +61,11 @@ exports.categoryUpdate = async (req, res, next) => {
 exports.categoryDelete = async (req, res, next) => {
 	const { id } = req.params;
 	try {
-		const category = await Category.findById(id)
+		const category = await Category.findById(id);
 		if (category.blogs.length > 0) {
 			return res.status(400).json({
 				message: 'You must remove all the associated blogs before deleting this category'
-			})
+			});
 		}
 
 		await category.deleteOne({ _id: category._id });

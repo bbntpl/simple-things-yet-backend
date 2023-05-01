@@ -1,11 +1,11 @@
 const express = require('express');
 const { authenticateUser } = require('../utils/middleware');
 const {
-  commentCreate,
+	commentCreate,
 	comments,
-  commentFetch,
-  commentUpdate,
-  commentDelete,
+	commentFetch,
+	commentUpdate,
+	commentDelete,
 } = require('../controllers/comment');
 const Viewer = require('../models/viewer');
 

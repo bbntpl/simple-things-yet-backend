@@ -125,6 +125,19 @@ describe('creation of category', () => {
 		const categoriesAtEnd = await categoriesInDb();
 		expect(categoriesAtEnd).toHaveLength(2);
 	});
+	test('should fail to create a category if there is no given name', async () => {
+		const duplicateCategory = {
+			description: 'A duplicate category for testing purposes',
+		};
+		await request
+			.post('/api/categories')
+			.send(duplicateCategory)
+			.set('Authorization', `Bearer ${token}`)
+			.expect(400);
+
+		const categoriesAtEnd = await categoriesInDb();
+		expect(categoriesAtEnd).toHaveLength(2);
+	});
 });
 
 describe('deletion of category', () => {

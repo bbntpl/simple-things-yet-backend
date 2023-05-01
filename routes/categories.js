@@ -1,11 +1,11 @@
 const express = require('express');
 const { authenticateUser } = require('../utils/middleware');
 const {
-  categoryCreate,
+	categoryCreate,
 	categories,
-  categoryFetch,
-  categoryUpdate,
-  categoryDelete,
+	categoryFetch,
+	categoryUpdate,
+	categoryDelete,
 } = require('../controllers/category');
 const Author = require('../models/author');
 

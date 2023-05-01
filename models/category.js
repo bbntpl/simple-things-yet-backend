@@ -26,7 +26,7 @@ categorySchema.set('toJSON', {
 		returnedObject.id = returnedObject._id.toString();
 		delete returnedObject._id;
 	},
-})
+});
 
 const Category = mongoose.model('Category', categorySchema);
 

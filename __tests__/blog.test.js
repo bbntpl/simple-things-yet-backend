@@ -11,25 +11,27 @@ const {
 	authorsInDb,
 	commentsInDb,
 	viewersInDb,
+	loginViewer,
 } = require('../utils/testHelpers');
 const {
 	sampleAuthor1,
 	sampleBlog2,
 	sampleBlog1,
-	sampleCategory1
+	sampleCategory1,
+	sampleViewer1
 } = require('../utils/testDataset');
 const Category = require('../models/category');
 const Blog = require('../models/blog');
+const Viewer = require('../models/viewer');
 
 let server;
 let token;
 
 const request = supertest(app);
 
-
 beforeAll(async () => {
 	server = await initApp();
-})
+});
 
 const postBlog = async (blog, token) => {
 	return await request
@@ -50,13 +52,16 @@ describe('initial database', () => {
 	beforeEach(async () => {
 		await deleteDbsForBlogTests();
 		await populateBlogsDb();
+
 		token = null;
 		token = await loginAuthor(request, sampleAuthor1);
 	});
+
 	test('should connect to the test database', async () => {
 		expect(mongoose.connection.readyState).toBe(1);
 		expect(mongoose.connection._connectionString).toBe(MONGODB_URI);
 	});
+
 	test('should add the initial data', async () => {
 		const blogs = await blogsInDb();
 		const authors = await authorsInDb();
@@ -65,19 +70,21 @@ describe('initial database', () => {
 		expect(authors.length).toBe(1);
 		expect(viewers.length).toBe(1);
 	});
-})
+});
 
 
-describe('view blogs', () => {
+describe('fetching blogs', () => {
 	beforeEach(async () => {
 		await deleteDbsForBlogTests();
 		await populateBlogsDb();
+
 		token = null;
 		token = await loginAuthor(request, sampleAuthor1);
 	});
+
 	test('should return blogs as json', async () => {
 		const blogs = await getBlogs();
-		const initialBlog = blogs.body[0]
+		const initialBlog = blogs.body[0];
 
 		expect(initialBlog.content).toEqual(sampleBlog1.content);
 		expect(initialBlog.title).toEqual(sampleBlog1.title);
@@ -107,9 +114,9 @@ describe('view blogs', () => {
 			.expect(200);
 
 		const initialBlog = response.body;
-		expect(initialBlog.author.id).toEqual(author.id.toString())
-		expect(initialBlog.author.name).toEqual(author.name)
-		expect(initialBlog.author.bio).toEqual(author.bio)
+		expect(initialBlog.author.id).toEqual(author.id.toString());
+		expect(initialBlog.author.name).toEqual(author.name);
+		expect(initialBlog.author.bio).toEqual(author.bio);
 	});
 });
 
@@ -117,36 +124,40 @@ describe('creation of blog', () => {
 	beforeEach(async () => {
 		await deleteDbsForBlogTests();
 		await populateBlogsDb();
+
 		token = null;
 		token = await loginAuthor(request, sampleAuthor1);
 	});
+
 	test('should add a valid blog', async () => {
 		await postBlog(sampleBlog2, token);
-		const blogs = await getBlogs();
+		const response = await getBlogs();
 
-		const titles = blogs.body.map(r => r.title);
-		const contents = blogs.body.map(r => r.content);
+		const blogs = response.body;
+
+		const titles = blogs.map(r => r.title);
+		const contents = blogs.map(r => r.content);
 		expect(titles).toContain(sampleBlog2.title);
 		expect(contents).toContain(sampleBlog2.content);
-		expect(blogs.body).toHaveLength(2);
-		const commentsAtEnd = await commentsInDb();
+		expect(blogs).toHaveLength(2);
 	});
 
 	test('should include reference to the only author', async () => {
 		const author = (await authorsInDb())[0];
 		await postBlog(sampleBlog2, token);
-		const blogs = await getBlogs();
+		const response = await getBlogs();
 
-		// Making sure both blogs owned by the only author
-		// by verifying the associated id is present
+		const blogs = response.body;
+
+		// Making sure both blogs are owned by the only author
+		// by verifying the presence of the associated id
 		const isOnlyAuthorReferenced
-			= blogs.body.reduce((total, blog) => {
-				if (blog.author.id == author.id); {
-					return total += 1;
+			= blogs.reduce((total, blog) => {
+				if (blog.author.toString() === author.id.toString()) {
+					return total + 1;
 				}
 			}, 0) === 2;
 		expect(isOnlyAuthorReferenced).toBeTruthy();
-		const commentsAtEnd = await commentsInDb();
 	});
 });
 
@@ -200,9 +211,11 @@ describe('update of blog', () => {
 	beforeEach(async () => {
 		await deleteDbsForBlogTests();
 		await populateBlogsDb();
+		
 		token = null;
 		token = await loginAuthor(request, sampleAuthor1);
 	});
+
 	test('should update a blog', async () => {
 		const blogsAtStart = await request.get('/api/blogs');
 		const blogToUpdate = blogsAtStart.body[0];
@@ -213,7 +226,7 @@ describe('update of blog', () => {
 		};
 
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}`)
+			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
 			.send(updatedBlog)
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -222,6 +235,7 @@ describe('update of blog', () => {
 		const updatedTitles = blogsAtEnd.body.map(r => r.title);
 		expect(updatedTitles).toContain(updatedBlog.title);
 	});
+
 	test('should verify that updatedAt gets modified every blog update', async () => {
 		const initialBlogs = await request.get('/api/blogs')
 			.expect(200);
@@ -236,7 +250,7 @@ describe('update of blog', () => {
 		};
 
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}`)
+			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
 			.send(updatedBlog)
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -245,6 +259,7 @@ describe('update of blog', () => {
 		const updatedAtEnd = blogsAtEnd.body[0].updatedAt;
 		expect(updatedAtEnd).not.toBe(updatedAtStart);
 	});
+
 	test('should successfully add category to blog', async () => {
 		const blogsAtStart = await blogsInDb();
 		const blogToUpdate = blogsAtStart[0];
@@ -254,7 +269,7 @@ describe('update of blog', () => {
 
 		// Update the blog to add category association
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}`)
+			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
 			.send({
 				...blogToUpdate,
 				categories: [
@@ -272,9 +287,10 @@ describe('update of blog', () => {
 		expect(blogsAtEnd[0].categories.map(String)).toContain(category._id.toString());
 		expect(updatedCategory.blogs).toHaveLength(1);
 		expect(updatedCategory.blogs.map(String)).toContain(blogsAtEnd[0].id.toString());
-	
+
 		await Category.deleteMany({});
 	});
+
 	test('should remove blog reference within category after uncategorization', async () => {
 		const category = new Category(sampleCategory1);
 		const blogToUpdate = await Blog.findOne({});
@@ -292,7 +308,7 @@ describe('update of blog', () => {
 
 		// Update the blog to remove the category association
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}`)
+			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
 			.send({
 				...blogToUpdate,
 				categories: []
@@ -316,13 +332,136 @@ describe('update of blog', () => {
 
 		// Update the blog by toggling the private property
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}`)
+			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
 			.send({ ...blogToUpdate, private: !blogToUpdate.private })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
 		const blogsAtEnd = await blogsInDb();
 		expect(blogsAtEnd[0].private).toBeFalsy();
+	});
+});
+
+describe('liking a blog feature', () => {
+	let blog;
+	let viewer;
+	let blogToUpdate;
+
+	beforeEach(async () => {
+		await deleteDbsForBlogTests();
+		await populateBlogsDb();
+		token = null;
+		token = await loginViewer(request, sampleViewer1);
+
+		// initialize blog and viewer every test
+		blog = await Blog.findOne({});
+		viewer = await Viewer.findOne({});
+		blogToUpdate = {
+			title: blog.title,
+			content: blog.content,
+			author: blog.author,
+			private: blog.private,
+			createdAt: blog.createdAt,
+			updatedAt: blog.updatedAt,
+			comments: blog.comments,
+			categories: blog.categories
+		};
+	});
+
+	test('should allow user/viewer to like a blog', async () => {
+		await request.put(`/api/blogs/${blog._id}`)
+			.send({
+				...blogToUpdate, likes: [
+					...blog.likes, viewer._id
+				]
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		const updatedBlog = await Blog.findOne({});
+		expect(updatedBlog.likes.map(String)).toContain(viewer._id.toString());
+	});
+
+	test('should only allow user/viewer to like a blog once', async () => {
+		await request.put(`/api/blogs/${blog._id}`)
+			.send({
+				...blogToUpdate, likes: [
+					...blog.likes, viewer._id
+				]
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		const updatedBlog = await Blog.findOne({});
+		expect(updatedBlog.likes.map(String)).toContain(viewer._id.toString());
+
+		// attempt for 2nd like
+		await request.put(`/api/blogs/${blog._id}`)
+			.send({
+				...blogToUpdate, likes: [
+					...blog.likes, viewer._id
+				]
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		const updatedBlogForThe2ndTime = await Blog.findOne({});
+		expect(updatedBlogForThe2ndTime.likes).toHaveLength(1);
+	});
+
+	test('should allow a user/viewer to unlike a blog that was liked prevoiusly', async () => {
+		await request.put(`/api/blogs/${blog._id}`)
+			.send({
+				...blogToUpdate, likes: [
+					...blog.likes, viewer._id
+				]
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		const updatedBlog = await Blog.findOne({});
+		expect(updatedBlog.likes.map(String)).toContain(viewer._id.toString());
+
+		const filteredLikes = updatedBlog
+			.likes.filter(id => !id.equals(viewer._id));
+
+		// attempt for 2nd like
+		await request.put(`/api/blogs/${blog._id}`)
+			.send({
+				...blogToUpdate, likes: filteredLikes
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		const updatedBlogForThe2ndTime = await Blog.findOne({});
+		expect(updatedBlogForThe2ndTime.likes).toHaveLength(0);
+		expect(updatedBlogForThe2ndTime.likes.map(String))
+			.not.toContain(viewer._id.toString());
+	});
+
+	test('should contain the correct amount of likes by users/viewers', async () => {
+		const initialLikesCount = blog.likes.length;
+		await request.put(`/api/blogs/${blog._id}`)
+			.send({
+				...blogToUpdate, likes: [
+					...blog.likes, viewer._id
+				]
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		const updatedBlog = await Blog.findOne({});
+		expect(updatedBlog.likes).toHaveLength(initialLikesCount + 1);
+	});
+
+	test('should not allow unauthorized user/viewer to like a blog', async () => {
+		await request.put(`/api/blogs/${blog._id}`)
+			.send({
+				...blogToUpdate, likes: [
+					...blog.likes, viewer._id
+				]
+			})
+			.expect(401);
 	});
 });
 

@@ -1,11 +1,14 @@
 const express = require('express');
 const {
-  viewerRegister,
-  viewerLogin,
+	viewerRegister,
+	viewerLogin,
 	viewers,
 	viewerFetch,
 	viewerDelete,
 	viewerUpdate,
+	viewerPasswordChange,
+	validateViewerLogin,
+	validateViewerRegistration
 } = require('../controllers/viewer');
 const Viewer = require('../models/viewer');
 const { authenticateUser } = require('../utils/middleware');
@@ -16,15 +19,18 @@ router.get('/all', viewers);
 
 router.get('/:id', viewerFetch);
 
-router.put('/:id/update', authenticateUser(Viewer), viewerUpdate);
-
 // Register as a new user/viewer
-router.post('/register', viewerRegister);
+router.post('/register', validateViewerRegistration, viewerRegister);
 
 // Login as an existing user/viewer
-router.post('/login', authenticateUser(Viewer), viewerLogin);
+router.post('/login', validateViewerLogin, viewerLogin);
 
 // Delete the account of user/viwer
-router.delete('/:id/delete',authenticateUser(Viewer), viewerDelete)
+router.delete('/:id/delete', authenticateUser(Viewer), viewerDelete);
+
+// Update allowed information of user/viewer
+router.put('/:id/update', authenticateUser(Viewer), viewerUpdate);
+
+router.put('/:id/change-password', authenticateUser(Viewer), viewerPasswordChange);
 
 module.exports = router;

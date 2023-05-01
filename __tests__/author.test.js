@@ -25,8 +25,8 @@ const getAuthorWithHashedPassword = async (sampleAuthor) => {
 		email: sampleAuthor.email,
 		username: sampleAuthor.username,
 		passwordHash
-	}
-}
+	};
+};
 
 beforeAll(async () => {
 	server = await initApp();
@@ -44,7 +44,7 @@ describe('View author', () => {
 	beforeEach(async () => {
 		await Author.deleteMany({});
 		await new Author(await getAuthorWithHashedPassword(sampleAuthor1)).save();
-	})
+	});
 
 	test('should fetch author object', async () => {
 		const response = await request
@@ -52,11 +52,11 @@ describe('View author', () => {
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
 
-		expect(response.body).toHaveProperty('name', 'Random Author');
-		expect(response.body).toHaveProperty('bio', 'This is a random author bio.');
-		expect(response.body).toHaveProperty('email', 'first.author@example.com');
-		expect(response.body).toHaveProperty('username', 'randauthor');
-	})
+		expect(response.body).toHaveProperty('name', sampleAuthor1.name);
+		expect(response.body).toHaveProperty('bio', sampleAuthor1.bio);
+		expect(response.body).toHaveProperty('email', sampleAuthor1.email);
+		expect(response.body).toHaveProperty('username', sampleAuthor1.username);
+	});
 
 	test('should not show passwordHash', async () => {
 		const response = await request
@@ -65,13 +65,13 @@ describe('View author', () => {
 			.expect(200);
 
 		expect(response.body.passwordHash).not.toBeDefined();
-	})
+	});
 });
 
 describe('Registration of author', () => {
 	beforeEach(async () => {
 		await Author.deleteMany({});
-	})
+	});
 
 	test('should register a new author account', async () => {
 		const response = await request
@@ -109,14 +109,14 @@ describe('Registration of author', () => {
 		expect(response.body).toContain('You are only allowed to have one account');
 		expect(createdAuthor).toBeNull();
 		expect(numOfAuthors).toEqual(1);
-	})
+	});
 });
 
 describe('Login of author', () => {
 	beforeEach(async () => {
 		await Author.deleteMany({});
 		await new Author(await getAuthorWithHashedPassword(sampleAuthor1)).save();
-	})
+	});
 
 	test('should log in with valid credentials', async () => {
 		const response = await request
@@ -162,15 +162,15 @@ describe('Update of author', () => {
 			})
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
-			.expect(200)
+			.expect(200);
 
 		expect(response.body.name).toEqual('B.B. Antipolo');
 		expect(response.body.bio).toEqual('Lifelong learner forever');
-	})
-})
+	});
+});
 
 afterAll(async () => {
 	await mongoose.connection.close();
 	server.close();
-	console.log('Author Tests: Close the server')
+	console.log('Author Tests: Close the server');
 });

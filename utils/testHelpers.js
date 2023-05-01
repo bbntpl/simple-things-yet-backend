@@ -24,12 +24,12 @@ const deleteDbsForBlogTests = async ({
 	if (deleteCommentCollection) {
 		await Comment.deleteMany({});
 	}
-}
+};
 
 const createInitialAuthor = async (sampleAuthor = sampleAuthor1) => {
 	const { password, ...authorWithoutPassword } = sampleAuthor;
 
-	const passwordHash = await bcrypt.hash('testpassword', 10);
+	const passwordHash = await bcrypt.hash(sampleAuthor.password, 10);
 	const author = new Author({
 		...authorWithoutPassword,
 		passwordHash,
@@ -42,7 +42,7 @@ const createInitialAuthor = async (sampleAuthor = sampleAuthor1) => {
 const createInitialViewer = async (sampleViewer = sampleViewer1) => {
 	const { password, ...viewerWithoutPassword } = sampleViewer;
 
-	const passwordHash = await bcrypt.hash('testpassword', 10);
+	const passwordHash = await bcrypt.hash(sampleViewer.password, 10);
 	const viewer = new Viewer({
 		...viewerWithoutPassword,
 		passwordHash
@@ -78,7 +78,6 @@ const populateBlogsDb = async ({
 	const blog = await Blog.create({
 		...sampleBlog,
 		author: author.id,
-		likes: [viewer.id],
 	});
 	if (allowComment) {
 		const comment = await createInitialComment({
@@ -98,7 +97,7 @@ const populateCategoriesDb = async () => {
 
 	await category1.save();
 	await category2.save();
-}
+};
 
 const loginAuthor = async (api, author) => {
 	const response = await api
@@ -108,7 +107,7 @@ const loginAuthor = async (api, author) => {
 			password: author.password
 		});
 	return response.body.token;
-}
+};
 
 const loginViewer = async (api, viewer) => {
 	const response = await api
@@ -118,32 +117,32 @@ const loginViewer = async (api, viewer) => {
 			password: viewer.password
 		});
 	return response.body.token;
-}
+};
 
 const blogsInDb = async () => {
-	const blogs = await Blog.find({})
-	return blogs.map(blog => blog.toJSON())
-}
+	const blogs = await Blog.find({});
+	return blogs.map(blog => blog.toJSON());
+};
 
 const commentsInDb = async () => {
-	const comments = await Comment.find({})
-	return comments.map(comment => comment.toJSON())
-}
+	const comments = await Comment.find({});
+	return comments.map(comment => comment.toJSON());
+};
 
 const authorsInDb = async () => {
-	const authors = await Author.find({})
-	return authors.map(author => author.toJSON())
-}
+	const authors = await Author.find({});
+	return authors.map(author => author.toJSON());
+};
 
 const viewersInDb = async () => {
-	const viewers = await Viewer.find({})
-	return viewers.map(viewer => viewer.toJSON())
-}
+	const viewers = await Viewer.find({});
+	return viewers.map(viewer => viewer.toJSON());
+};
 
 const categoriesInDb = async () => {
 	const categories = await Category.find({});
-	return categories.map(category => category.toJSON())
-}
+	return categories.map(category => category.toJSON());
+};
 
 module.exports = {
 	deleteDbsForBlogTests,
