@@ -36,7 +36,7 @@ async function connectDB() {
 
 async function initApp() {
 	try {
-		await connectDB()
+		await connectDB();
 		const server = app.listen(PORT, function (err) {
 			if (err) {
 				console.log(`Error: ${err}`);

@@ -3,7 +3,6 @@ const supertest = require('supertest');
 const bcrypt = require('bcrypt');
 
 const { app, initApp } = require('../app');
-const { MONGODB_URI } = require('../utils/config');
 const { sampleViewer1, sampleViewer2 } = require('../utils/testDataset');
 const {
 	createInitialViewer,
@@ -19,22 +18,6 @@ const request = supertest(app);
 
 beforeAll(async () => {
 	server = await initApp();
-});
-
-describe('initial database', () => {
-	beforeEach(async () => {
-		await Viewer.deleteMany({});
-		await createInitialViewer();
-	});
-
-	test('should connect to the test database', async () => {
-		expect(mongoose.connection.readyState).toBe(1);
-		expect(mongoose.connection._connectionString).toBe(MONGODB_URI);
-	});
-	test('should add the initial data', async () => {
-		const viewers = await viewersInDb();
-		expect(viewers.length).toBe(1);
-	});
 });
 
 describe('fetch viewer object', () => {

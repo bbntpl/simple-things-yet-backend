@@ -39,7 +39,7 @@ const serverErrorHandler = (err, req, res, next) => {
 	next();
 };
 
-const authenticateUser = (Schema) => async (req, res, next) => {
+const authenticateUser = (UserModel) => async (req, res, next) => {
 	const authHeader = req.header('Authorization');
 
 	if (!authHeader) {
@@ -48,7 +48,7 @@ const authenticateUser = (Schema) => async (req, res, next) => {
 	const token = authHeader.replace('Bearer ', '');
 	try {
 		const decoded = jwt.verify(token, SECRET_KEY);
-		const user = await Schema.findById(decoded.id);
+		const user = await UserModel.findById(decoded.id);
 
 		if (!user) {
 			throw new Error('Authentication failed');

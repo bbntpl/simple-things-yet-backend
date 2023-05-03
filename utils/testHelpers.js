@@ -12,6 +12,7 @@ const {
 	sampleComment1,
 	sampleCategory1,
 	sampleCategory2,
+	sampleComment2,
 } = require('../utils/testDataset');
 
 const deleteDbsForBlogTests = async ({
@@ -26,52 +27,77 @@ const deleteDbsForBlogTests = async ({
 	}
 };
 
-const createInitialAuthor = async (sampleAuthor = sampleAuthor1) => {
-	const { password, ...authorWithoutPassword } = sampleAuthor;
+const createInitialUser = async (UserModel, sampleUser) => {
+	const { password, ...userWithoutPassword } = sampleUser;
 
-	const passwordHash = await bcrypt.hash(sampleAuthor.password, 10);
-	const author = new Author({
-		...authorWithoutPassword,
+	const passwordHash = await bcrypt.hash(password, 10);
+	const user = new UserModel({
+		...userWithoutPassword,
 		passwordHash,
 	});
-	await author.save();
+	await user.save();
 
-	return author;
+	return user;
+};
+
+const createInitialAuthor = async (sampleAuthor = sampleAuthor1) => {
+	return createInitialUser(Author, sampleAuthor);
 };
 
 const createInitialViewer = async (sampleViewer = sampleViewer1) => {
-	const { password, ...viewerWithoutPassword } = sampleViewer;
-
-	const passwordHash = await bcrypt.hash(sampleViewer.password, 10);
-	const viewer = new Viewer({
-		...viewerWithoutPassword,
-		passwordHash
-	});
-
-	await viewer.save();
-
-	return viewer;
+	return createInitialUser(Viewer, sampleViewer);
 };
+
 
 const createInitialComment = async ({
 	sampleComment = sampleComment1,
-	viewer, // This has no default value
-	blog, // This has no default value
+	user,
+	userType,
+	blog,
+	parentComment,
 } = {}) => {
 	const comment = new Comment({
 		...sampleComment,
-		viewer,
+		[userType]: user,
+		parentComment,
 		blog
 	});
-
 	await comment.save();
 
 	return comment;
 };
 
+const createCommentForBlog = async (blog, viewer, author, isReply = false, parentComment = null) => {
+	const comment = await createInitialComment({
+		sampleComment: isReply ? sampleComment2 : sampleComment1,
+		userType: viewer !== null ? 'viewer' : 'author',
+		user: viewer !== null ? viewer._id : author._id,
+		blog: blog.id,
+		parentComment: isReply && parentComment !== null ? parentComment._id : null,
+	});
+
+	await blog.updateOne({
+		$push: { comments: comment.id },
+	});
+
+	if (isReply) {
+		await parentComment.updateOne({
+			$push: { replies: comment.id },
+		});
+	}
+
+	await (viewer !== null ? viewer : author).updateOne({
+		$push: { comments: comment.id },
+	});
+
+	return comment;
+};
+
 const populateBlogsDb = async ({
+	viewerIsCommenter = true,
 	allowComment = false,
-	sampleBlog = sampleBlog1
+	allowReply = false,
+	sampleBlog = sampleBlog1,
 } = {}) => {
 	const author = await createInitialAuthor();
 	const viewer = await createInitialViewer();
@@ -79,15 +105,22 @@ const populateBlogsDb = async ({
 		...sampleBlog,
 		author: author.id,
 	});
+
 	if (allowComment) {
-		const comment = await createInitialComment({
-			viewer: viewer.id,
-			blog: blog.id
-		});
-		await blog.updateOne({
-			$push:
-				{ comments: comment.id }
-		});
+		const parentComment = await createCommentForBlog(
+			blog,
+			viewerIsCommenter ? viewer : null,
+			!viewerIsCommenter ? author : null
+		);
+
+		if (allowReply) {
+			await createCommentForBlog(
+				blog,
+				viewerIsCommenter ? viewer : null,
+				!viewerIsCommenter ? author : null,
+				true,
+				parentComment);
+		}
 	}
 };
 

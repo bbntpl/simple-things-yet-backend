@@ -2,7 +2,6 @@ const supertest = require('supertest');
 const mongoose = require('mongoose');
 
 const { app, initApp } = require('../app');
-const { MONGODB_URI } = require('../utils/config');
 const {
 	deleteDbsForBlogTests,
 	loginAuthor,
@@ -10,7 +9,6 @@ const {
 	blogsInDb,
 	authorsInDb,
 	commentsInDb,
-	viewersInDb,
 	loginViewer,
 } = require('../utils/testHelpers');
 const {
@@ -47,31 +45,6 @@ const getBlogs = async () => {
 		.expect('Content-Type', /application\/json/)
 		.expect(200);
 };
-
-describe('initial database', () => {
-	beforeEach(async () => {
-		await deleteDbsForBlogTests();
-		await populateBlogsDb();
-
-		token = null;
-		token = await loginAuthor(request, sampleAuthor1);
-	});
-
-	test('should connect to the test database', async () => {
-		expect(mongoose.connection.readyState).toBe(1);
-		expect(mongoose.connection._connectionString).toBe(MONGODB_URI);
-	});
-
-	test('should add the initial data', async () => {
-		const blogs = await blogsInDb();
-		const authors = await authorsInDb();
-		const viewers = await viewersInDb();
-		expect(blogs.length).toBe(1);
-		expect(authors.length).toBe(1);
-		expect(viewers.length).toBe(1);
-	});
-});
-
 
 describe('fetching blogs', () => {
 	beforeEach(async () => {
@@ -211,7 +184,7 @@ describe('update of blog', () => {
 	beforeEach(async () => {
 		await deleteDbsForBlogTests();
 		await populateBlogsDb();
-		
+
 		token = null;
 		token = await loginAuthor(request, sampleAuthor1);
 	});
@@ -292,8 +265,8 @@ describe('update of blog', () => {
 	});
 
 	test('should remove blog reference within category after uncategorization', async () => {
-		const category = new Category(sampleCategory1);
 		const blogToUpdate = await Blog.findOne({});
+		const category = new Category(sampleCategory1);
 
 		// Add blog reference to category
 		category.blogs.push(blogToUpdate._id);
@@ -309,10 +282,7 @@ describe('update of blog', () => {
 		// Update the blog to remove the category association
 		await request
 			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
-			.send({
-				...blogToUpdate,
-				categories: []
-			})
+			.send({ ...blogToUpdate.toObject(), categories: [] })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 

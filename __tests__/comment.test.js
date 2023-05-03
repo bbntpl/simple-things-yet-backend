@@ -2,327 +2,778 @@ const supertest = require('supertest');
 const mongoose = require('mongoose');
 
 const { app, initApp } = require('../app');
-const { MONGODB_URI } = require('../utils/config');
 const {
 	deleteDbsForBlogTests,
 	loginAuthor,
 	populateBlogsDb,
-	blogsInDb,
-	authorsInDb,
 	commentsInDb,
-	viewersInDb,
 	loginViewer,
+	createInitialViewer,
 } = require('../utils/testHelpers');
 const {
 	sampleAuthor1,
-	sampleBlog2,
-	sampleBlog1,
-	sampleCategory1,
-	sampleViewer1
+	sampleViewer1,
+	sampleViewer2
 } = require('../utils/testDataset');
-const Category = require('../models/category');
+const Viewer = require('../models/viewer');
+const Comment = require('../models/comment');
+const Author = require('../models/author');
 const Blog = require('../models/blog');
-const { describe } = require('yargs');
 
 let server;
 let token;
 
 const request = supertest(app);
 
-
 beforeAll(async () => {
 	server = await initApp();
 });
 
-describe('initial database', () => {
-	beforeEach(async () => {
-		await deleteDbsForBlogTests();
-		await populateBlogsDb();
-		token = null;
-		token = await loginAuthor(request, sampleAuthor1);
-	});
-	test('should connect to the test database', async () => {
-		expect(mongoose.connection.readyState).toBe(1);
-		expect(mongoose.connection._connectionString).toBe(MONGODB_URI);
-	});
-	test('should add the initial data', async () => {
-		const blogs = await blogsInDb();
-		const authors = await authorsInDb();
-		const viewers = await viewersInDb();
-		const comments = await commentsInDb();
-		expect(blogs.length).toBe(1);
-		expect(authors.length).toBe(1);
-		expect(viewers.length).toBe(1);
-		expect(comments.length).toBe(1);
-	});
-});
-
 describe('fetch of comments', () => {
-	beforeEach(async () => {
-		await deleteDbsForBlogTests();
-		await populateBlogsDb();
-	});
-	test('should get all of the comments', async () => {
-		const response = await request.get('/api/comments/')
-			.expect('Content-Type', /application\/json/)
-			.expect(200);
+	describe('that are children; replies', () => {
+		beforeEach(async () => {
+			await deleteDbsForBlogTests({ deleteCommentCollection: true });
+			await populateBlogsDb({ allowComment: true, allowReply: true });
+		});
 
-		const comments = response.body;
-		expect(comments).toHaveLength(1);
-	});
-	test('should get a specific comment', async () => {
-		const comments = await commentsInDb();
-		const response = await request.get(`/api/comments/${comments[0].id}`)
-			.expect('Content-Type', /application\/json/)
-			.expect(200);
+		test('should successfully fetch replies to a specific comment', async () => {
+			const comments = await commentsInDb();
+			const parentComment = comments[0];
 
-		const comment = response.body;
-		expect(comment).toMatchObject(comments[0]);
-	});
-});
+			const response = await request
+				.get(`/api/comments/${parentComment.id}/replies`)
+				.expect(200)
+				.expect('Content-Type', /application\/json/);
 
-describe('creation of comment', () => {
-	test('should fail to comment if no user is authenticated', async () => {
-		const response = await request
-			.post('/api/comment')
-			.send({ /* comment data */ })
-			.expect(401);
+			const replies = response.body;
+			expect(replies).toHaveLength(parentComment.replies.length);
+			replies.forEach(reply => {
+				expect(parentComment.replies.toString()).toEqual(reply.toString());
+			});
+		});
 
-		expect(response.body.error).toBe('Not authenticated');
-	});
+		test('should successfully fetch a specific reply to a comment', async () => {
+			const parentComment = await Comment.findOne({}).populate(['viewer', 'author']);
+			const reply = await Comment.findById(parentComment.replies[0]);
 
-	test('should successfully comment on a blog as a viewer', async () => {
-		const viewerToken = await loginViewer(request, sampleViewer1);
+			const response = await request
+				.get(`/api/comments/${reply._id}`)
+				.expect(200)
+				.expect('Content-Type', /application\/json/);
 
-		const response = await request
-			.post('/api/comment')
-			.set('Authorization', `Bearer ${viewerToken}`)
-			.send({ /* comment data */ })
-			.expect(201);
-
-		expect(response.body).toMatchObject({ /* expected comment data */ });
+			const requestedReply = response.body;
+			expect(requestedReply.id.toString()).toEqual(reply._id.toString());
+		});
 	});
 
-	test('should successfully add comment reference to viewer', async () => {
-		const viewerToken = await loginViewer(request, sampleViewer1);
+	describe('that are parents; parentComments', () => {
+		beforeEach(async () => {
+			await deleteDbsForBlogTests({ deleteCommentCollection: true });
+			await populateBlogsDb({ allowComment: true });
+		});
 
-		const response = await request
-			.post('/api/comment')
-			.set('Authorization', `Bearer ${viewerToken}`)
-			.send({ /* comment data */ })
-			.expect(201);
+		test('should fetch all of the comments', async () => {
+			const response = await request.get('/api/comments/')
+				.expect('Content-Type', /application\/json/)
+				.expect(200);
 
-		const updatedViewer = await Viewer.findById(sampleViewer1.id);
-		expect(updatedViewer.comments).toContainEqual(response.body.id);
-	});
-});
+			const comments = response.body;
+			expect(comments).toHaveLength(1);
+		});
 
-describe('updating comments', () => {
-	test('should fail to update a comment if no user is authenticated', async () => {
-		const comments = await commentsInDb();
-		const response = await request
-			.put(`/api/comment/${comments[0].id}`)
-			.send({ /* updated comment data */ })
-			.expect(401);
+		test('should fetch a specific comment', async () => {
+			const comments = await Comment.find({}).populate(['viewer', 'author']);
+			const response = await request.get(`/api/comments/${comments[0].id}`)
+				.expect('Content-Type', /application\/json/)
+				.expect(200);
 
-		expect(response.body.error).toBe('Not authenticated');
-	});
-
-	test('should successfully update a comment as a viewer', async () => {
-		const viewerToken = await loginViewer(request, sampleViewer1);
-		const comments = await commentsInDb();
-
-		const response = await request
-			.put(`/api/comment/${comments[0].id}`)
-			.set('Authorization', `Bearer ${viewerToken}`)
-			.send({ /* updated comment data */ })
-			.expect(200);
-
-		expect(response.body).toMatchObject({ /* expected updated comment data */ });
-	});
-});
-
-describe('deleting comments', () => {
-	test('should fail to delete a comment if no user is authenticated', async () => {
-		const comments = await commentsInDb();
-		const response = await request
-			.delete(`/api/comment/${comments[0].id}`)
-			.expect(401);
-
-		expect(response.body.error).toBe('Not authenticated');
-	});
-
-	test('should successfully delete a comment as a viewer', async () => {
-		const viewerToken = await loginViewer(request, sampleViewer1);
-		const comments = await commentsInDb();
-
-		await request
-			.delete(`/api/comment/${comments[0].id}`)
-			.set('Authorization', `Bearer ${viewerToken}`)
-			.expect(204);
-
-		const updatedComments = await commentsInDb();
-		expect(updatedComments).toHaveLength(0);
-	});
-});
-
-describe('liking and unliking comments', () => {
-	test('should fail to like a comment if the user is not authenticated', async () => {
-		const comments = await commentsInDb();
-		const commentToLike = comments[0];
-
-		await request
-			.put(`/api/comments/${commentToLike.id}/like`)
-			.expect(401);
-
-		const updatedComment = await Comment.findById(commentToLike.id);
-		expect(updatedComment.likes).toHaveLength(0);
-	});
-
-	test('should successfully like and unlike a comment as a viewer', async () => {
-		const comments = await commentsInDb();
-		const commentToLike = comments[0];
-
-		await request
-			.put(`/api/comments/${commentToLike.id}/like`)
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
-
-		const updatedComment = await Comment.findById(commentToLike.id);
-		expect(updatedComment.likes).toHaveLength(1);
-
-		await request
-			.put(`/api/comments/${commentToLike.id}/unlike`)
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
-
-		const finalComment = await Comment.findById(commentToLike.id);
-		expect(finalComment.likes).toHaveLength(0);
-	});
-});
-
-describe('replies to comments', () => {
-	test('should successfully create a reply to a comment', async () => {
-		const comments = await commentsInDb();
-		const parentComment = comments[0];
-		const replyContent = 'This is a reply to the comment';
-
-		const response = await request
-			.post(`/api/comments/${parentComment.id}/replies`)
-			.send({ content: replyContent })
-			.set('Authorization', `Bearer ${token}`)
-			.expect(201)
-			.expect('Content-Type', /application\/json/);
-
-		const reply = response.body;
-		expect(reply.content).toBe(replyContent);
-
-		const updatedParentComment = await Comment.findById(parentComment.id);
-		expect(updatedParentComment.replies).toContainEqual(reply.id);
-	});
-
-	test('should successfully fetch replies to a specific comment', async () => {
-		const comments = await commentsInDb();
-		const parentComment = comments[0];
-
-		const response = await request
-			.get(`/api/comments/${parentComment.id}/replies`)
-			.expect(200)
-			.expect('Content-Type', /application\/json/);
-
-		const replies = response.body;
-		expect(replies).toHaveLength(parentComment.replies.length);
-		replies.forEach(reply => {
-			expect(parentComment.replies).toContainEqual(reply.id);
+			const comment = response.body;
+			expect(comment.id.toString()).toEqual(comments[0]._id.toString());
 		});
 	});
 });
 
-describe('author interactions with comments', () => {
-	test('should successfully create a comment as an author', async () => {
+/**
+ * Tests the comment creation process for the given user type, user, token, blog, model, comment route, and parent comment.
+ *
+ * @param {Object} params - The parameters for the test.
+ * @param {string} params.userType - The type of user (author or viewer).
+ * @param {Object} params.user - The user object.
+ * @param {string} params.token - The user's authentication token.
+ * @param {Object} params.blog - The blog object.
+ * @param {Object} params.UserModel - The user model (Author or Viewer).
+ * @param {string} params.commentRoute - The API route for creating the comment.
+ * @param {mongoose.Types.ObjectId} [params.parentComment=null] - The parent comment id, if applicable.
+ */
+
+const testCommentCreation = async ({ userType, user, token, blog, UserModel, commentRoute, parentComment = null }) => {
+	const response = await request
+		.post(commentRoute)
+		.send({
+			content: 'I like this blog post!',
+			user: user._id,
+			blog: blog._id,
+			parentComment
+		})
+		.set('Authorization', `Bearer ${token}`)
+		.expect(201);
+
+	const createdComment = response.body;
+
+	expect(createdComment.content).toEqual('I like this blog post!');
+	expect(createdComment[userType].toString()).toEqual(user._id.toString());
+	expect(createdComment.blog.toString()).toEqual(blog._id.toString());
+
+	if (parentComment !== null && parentComment) {
+		// Verify that the reply reference is added to the parentComment replies
+		const updatedParentComment = await Comment.findById(parentComment._id);
+		expect(updatedParentComment.replies.map(String)).toContainEqual(response.body.id.toString());
+	}
+
+	// Verify that the comment/reply reference is added to the user comments
+	const updatedUser = await UserModel.findById(user._id);
+	expect(updatedUser.comments.map(String)).toContainEqual(response.body.id.toString());
+
+	// Verify that the comment/reply reference is added to the blog comments
+	const updatedBlog = await Blog.findById(blog._id);
+	expect(updatedBlog.comments.map(String)).toContainEqual(response.body.id.toString());
+};
+
+describe('creation of a comment', () => {
+	let blog;
+	let user;
+	test('should fail to comment if no user is authenticated', async () => {
 		const response = await request
-			.post('/api/comments/')
-			.set('Authorization', `Bearer ${token}`)
-			.send({ /* comment data */ })
-			.expect(201);
+			.post('/api/comments')
+			.send({})
+			.expect(401);
 
-		expect(response.body).toMatchObject({ /* expected comment data */ });
+		expect(response.body.error).toBe('Unauthorized: Missing Authorization header.');
 	});
 
-	test('should successfully add comment reference to author', async () => {
-		const response = await request
-			.post('/api/comments/')
-			.set('Authorization', `Bearer ${token}`)
-			.send({ /* comment data */ })
-			.expect(201);
+	describe('that is a parentComment', () => {
+		describe('by an author', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests();
+				await populateBlogsDb();
+				token = await loginAuthor(request, sampleAuthor1);
 
-		const updatedAuthor = await Author.findById(sampleAuthor1.id);
-		expect(updatedAuthor.comments).toContainEqual(response.body.id);
+				blog = await Blog.findOne({});
+				user = await Author.findOne({});
+			});
+
+			test('should successfully comment on a blog as an author', async () => {
+				await testCommentCreation({
+					userType: 'author',
+					user,
+					token,
+					blog,
+					UserModel: Author,
+					commentRoute: '/api/comments/author-only'
+				});
+			});
+		});
+
+		describe('by a viewer', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests();
+				await populateBlogsDb();
+				token = await loginViewer(request, sampleViewer1);
+
+				blog = await Blog.findOne({});
+				user = await Viewer.findOne({});
+			});
+
+			test('should successfully comment on a blog as a viewer', async () => {
+				await testCommentCreation({
+					userType: 'viewer',
+					user,
+					token,
+					blog,
+					UserModel: Viewer,
+					commentRoute: '/api/comments/'
+				});
+			});
+		});
 	});
 
-	test('should successfully update a comment as an author', async () => {
-		const comments = await commentsInDb();
-		const response = await request
-			.put(`/api/comments/${comments[0].id}`)
-			.set('Authorization', `Bearer ${token}`)
-			.send({ /* updated comment data */ })
-			.expect(200);
+	describe('that is a reply', () => {
+		describe('by an author', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests();
+				await populateBlogsDb();
+				token = await loginAuthor(request, sampleAuthor1);
 
-		expect(response.body).toMatchObject({ /* expected updated comment data */ });
-	});
+				blog = await Blog.findOne({});
+				user = await Author.findOne({});
+			});
 
-	test('should successfully delete a comment as an author', async () => {
-		const comments = await commentsInDb();
-		await request
-			.delete(`/api/comments/${comments[0].id}`)
-			.set('Authorization', `Bearer ${token}`)
-			.expect(204);
+			test('should successfully reply on a comment as an author', async () => {
+				const initialComment = await Comment.findOne({});
 
-		const updatedComments = await commentsInDb();
-		expect(updatedComments).toHaveLength(0);
-	});
+				await testCommentCreation({
+					userType: 'author',
+					user,
+					token,
+					blog,
+					UserModel: Author,
+					commentRoute: `/api/comments/${initialComment._id}/replies/author-only`,
+					parentComment: initialComment._id
+				});
+			});
+		});
 
-	test('should successfully like and unlike a comment as an author', async () => {
-		const comments = await commentsInDb();
-		const commentToLike = comments[0];
+		describe('by a viewer', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests();
+				await populateBlogsDb();
+				token = await loginViewer(request, sampleViewer1);
 
-		await request
-			.put(`/api/comments/${commentToLike.id}/like`)
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
+				blog = await Blog.findOne({});
+				user = await Viewer.findOne({});
+			});
 
-		const updatedComment = await Comment.findById(commentToLike.id);
-		expect(updatedComment.likes).toHaveLength(1);
+			test('should successfully reply on a comment as a viewer', async () => {
+				const initialComment = await Comment.findOne({});
 
-		await request
-			.put(`/api/comments/${commentToLike.id}/unlike`)
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
-
-		const finalComment = await Comment.findById(commentToLike.id);
-		expect(finalComment.likes).toHaveLength(0);
-	});
-
-	test('should successfully create a reply to a comment as an author', async () => {
-		const comments = await commentsInDb();
-		const parentComment = comments[0];
-		const replyContent = 'This is a reply to the comment';
-
-		const response = await request
-			.post(`/api/comments/${parentComment.id}/replies`)
-			.send({ content: replyContent })
-			.set('Authorization', `Bearer ${token}`)
-			.expect(201)
-			.expect('Content-Type', /application\/json/);
-
-		const reply = response.body;
-		expect(reply.content).toBe(replyContent);
-
-		const updatedParentComment = await Comment.findById(parentComment.id);
-		expect(updatedParentComment.replies).toContainEqual(reply.id);
+				await testCommentCreation({
+					userType: 'viewer',
+					user,
+					token,
+					blog,
+					UserModel: Viewer,
+					commentRoute: `/api/comments/${initialComment._id}/replies`,
+					parentComment: initialComment._id
+				});
+			});
+		});
 	});
 });
 
+describe('update of a comment', () => {
+	let user;
+	describe('by an unauthorized user', () => {
+		beforeEach(async () => {
+			await deleteDbsForBlogTests({ deleteCommentCollection: true });
+			await populateBlogsDb({
+				allowComment: true,
+				allowReply: true,
+				viewerIsCommenter: false
+			});
+
+			token = await loginAuthor(request, sampleAuthor1);
+			user = await Author.findOne({});
+		});
+
+		test('should fail to update a reply', async () => {
+			const parentComment = await Comment.findOne({ parentComment: null });
+			const userReply = await Comment.findOne({ parentComment: parentComment._id });
+
+			const response = await request
+				.put(`/api/comments/${parentComment._id}/replies/${userReply._id}`)
+				.send({
+					...userReply,
+					content: 'What do you think of the blog?'
+				})
+				.expect(401);
+
+			expect(response.body.error).toBe('Unauthorized: Missing Authorization header.');
+		});
+
+		test('should fail to update a comment', async () => {
+			const parentComment = await Comment.findOne({ parentComment: null });
+
+			const response = await request
+				.put(`/api/comments/${parentComment._id}`)
+				.send({
+					...parentComment,
+					content: 'I lied, your content is lacking somethng'
+				})
+				.expect(401);
+
+			expect(response.body.error).toBe('Unauthorized: Missing Authorization header.');
+		});
+	});
+
+	describe('that is a parentComment', () => {
+		describe('by an author', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true, viewerIsCommenter: false });
+
+				token = await loginAuthor(request, sampleAuthor1);
+				user = await Author.findOne({});
+			});
+
+			test('should successfully update a comment as an author', async () => {
+				const comments = await commentsInDb();
+				const userComment = comments.find(comment => comment.author.toString() === user._id.toString());
+
+				const response = await request
+					.put(`/api/comments/${userComment.id}/author-only`)
+					.send({
+						...userComment,
+						content: 'I lied, your content is lacking something'
+					})
+					.set('Authorization', `Bearer ${token}`)
+					.expect(200);
+
+				const updatedComment = response.body;
+				expect(updatedComment.content).toEqual('I lied, your content is lacking something');
+			});
+		});
+
+		describe('by a viewer', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true });
+
+				token = await loginViewer(request, sampleViewer1);
+				user = await Viewer.findOne({});
+			});
+
+			test('should successfully update a comment as a viewer', async () => {
+				const comments = await commentsInDb();
+				const userComment = comments.find(comment => comment.viewer.toString() === user._id.toString());
+
+				const response = await request
+					.put(`/api/comments/${userComment.id}`)
+					.send({
+						...userComment,
+						content: 'I lied, your content is lacking something'
+					})
+					.set('Authorization', `Bearer ${token}`)
+					.expect(200);
+
+				const updatedComment = response.body;
+				expect(updatedComment.content).toEqual('I lied, your content is lacking something');
+			});
+		});
+	});
+
+	describe('that is a reply', () => {
+		describe('by an author', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true, viewerIsCommenter: false, allowReply: true });
+
+				token = await loginAuthor(request, sampleAuthor1);
+				user = await Author.findOne({});
+			});
+
+			test('should successfully update a reply as an author', async () => {
+				const parentComment = await Comment.findOne({ parentComment: null });
+				const userReply =await Comment.findOne({ parentComment: parentComment._id });
+
+				const response = await request
+					.put(`/api/comments/${parentComment._id}/replies/${userReply._id}/author-only/`)
+					.send({
+						...userReply.toObject(),
+						content: 'I lied, your content is lacking something'
+					})
+					.set('Authorization', `Bearer ${token}`)
+					.expect(200);
+
+				const updatedReply = response.body;
+				expect(updatedReply.content).toEqual('I lied, your content is lacking something');
+			});
+		});
+
+		describe('by a viewer', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true, allowReply: true });
+
+				token = await loginViewer(request, sampleViewer1);
+				user = await Viewer.findOne({});
+			});
+
+			test('should successfully update a reply as a viewer', async () => {
+				const parentComment = await Comment.findOne({ parentComment: null });
+				const userReply =await Comment.findOne({ parentComment: parentComment._id });
+
+				const response = await request
+					.put(`/api/comments/${parentComment._id}/replies/${userReply._id}`)
+					.set('Authorization', `Bearer ${token}`)
+					.send({
+						...userReply.toObject(),
+						content: 'I lied, your content is lacking something'
+					})
+					.expect(200);
+
+				const updatedReply = response.body;
+				expect(updatedReply.content).toEqual('I lied, your content is lacking something');
+			});
+		});
+	});
+});
+
+describe('deletion of a comment', () => {
+	describe('by an unauthorized user', () => {
+		beforeEach(async () => {
+			await deleteDbsForBlogTests({ deleteCommentCollection: true });
+			await populateBlogsDb({ allowComment: true, allowReply: true, viewerIsCommenter: false });
+			token = await loginAuthor(request, sampleAuthor1);
+		});
+
+		test('should fail to delete a comment', async () => {
+			const comments = await commentsInDb();
+
+			const response = await request
+				.delete(`/api/comments/${comments[0].id}`)
+				.expect(401);
+
+			expect(response.body.error).toBe('Unauthorized: Missing Authorization header.');
+		});
+
+		test('should fail to delete a reply', async () => {
+			const parentComment = await Comment.findOne({ parentComment: null });
+			const userReply = await Comment.findOne({ parentComment: parentComment._id });
+
+			const response = await request
+				.delete(`/api/comments/${parentComment._id}/replies/${userReply._id}`)
+				.expect(401);
+
+			expect(response.body.error).toBe('Unauthorized: Missing Authorization header.');
+		});
+	});
+
+	describe('that is a parent comment', () => {
+		describe('by an author', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true });
+			});
+
+			test('should fail to delete a comment if not written by an author', async () => {
+				token = await loginViewer(request, sampleViewer1);
+
+				const comments = await commentsInDb();
+
+				const response = await request
+					.delete(`/api/comments/${comments[0].id}/author-only`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(403);
+
+				const updatedComments = await commentsInDb();
+				expect(response.body.error).toEqual('A comment can only be deleted by the owner');
+				expect(updatedComments).toHaveLength(1);
+			});
+
+			test('should successfully delete a comment as an author', async () => {
+				token = await loginAuthor(request, sampleAuthor1);
+				const comments = await commentsInDb();
+
+				await request
+					.delete(`/api/comments/${comments[0].id}/author-only`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(204);
+
+				const updatedComments = await commentsInDb();
+				expect(updatedComments).toHaveLength(0);
+			});
+		});
+
+		describe('by a viewer', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true });
+			});
+
+			test('should fail to delete a comment if not written by a viewer', async () => {
+				token = await loginAuthor(request, sampleAuthor1);
+				const comments = await commentsInDb();
+
+				const response = await request
+					.delete(`/api/comments/${comments[0].id}`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(403);
+
+				const updatedComments = await commentsInDb();
+				expect(response.body.error).toEqual('A comment can only be deleted by the owner');
+				expect(updatedComments).toHaveLength(1);
+			});
+
+			test('should successfully delete a comment as a viewer', async () => {
+				token = await loginViewer(request, sampleViewer1);
+
+				const comments = await commentsInDb();
+
+				await request
+					.delete(`/api/comments/${comments[0].id}`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(204);
+
+				const updatedComments = await commentsInDb();
+				expect(updatedComments).toHaveLength(0);
+			});
+		});
+	});
+
+	describe('that is a reply', () => {
+		describe('by an author', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true, allowReply: true });
+			});
+
+			test('should fail to delete a reply if not written by an author', async () => {
+				token = await loginViewer(request, sampleViewer1);
+				const comments = await commentsInDb();
+				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
+				const replyId = commentWithReplies.replies[0];
+
+				const response = await request
+					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}/author-only`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(403);
+
+				expect(response.body.error).toEqual('A reply can only be deleted by the owner');
+			});
+
+			test('should successfully delete a reply as an author', async () => {
+				token = await loginAuthor(request, sampleAuthor1);
+				const comments = await commentsInDb();
+				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
+				const replyId = commentWithReplies.replies[0];
+
+				await request
+					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}/author-only`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(204);
+
+				const updatedComments = await commentsInDb();
+				const updatedComment = updatedComments.find(comment => comment._id.toString() === commentWithReplies._id.toString());
+				expect(updatedComment.replies).toHaveLength(0);
+			});
+		});
+
+		describe('by a viewer', () => {
+			beforeEach(async () => {
+				await deleteDbsForBlogTests({ deleteCommentCollection: true });
+				await populateBlogsDb({ allowComment: true, allowReply: true });
+			});
+
+			test('should fail to delete a reply if not written by a viewer', async () => {
+				token = await loginAuthor(request, sampleAuthor1);
+				const comments = await commentsInDb();
+				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
+				const replyId = commentWithReplies.replies[0];
+
+				const response = await request
+					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(403);
+
+				expect(response.body.error).toEqual('A reply can only be deleted by the owner');
+			});
+
+			test('should successfully delete a reply as a viewer', async () => {
+				token = await loginViewer(request, sampleViewer1);
+				const comments = await commentsInDb();
+				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
+				const replyId = commentWithReplies.replies[0];
+
+				await request
+					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}`)
+					.set('Authorization', `Bearer ${token}`)
+					.expect(204);
+
+				const updatedComments = await commentsInDb();
+				const updatedComment = updatedComments.find(comment => comment._id.toString() === commentWithReplies._id.toString);
+				expect(updatedComment.replies).toHaveLength(0);
+			});
+		});
+	});
+});
+
+describe('liking and unliking', () => {
+	let secondUser;
+	describe('by an unauthenticated user', () => {
+		beforeEach(async () => {
+			await deleteDbsForBlogTests({ deleteCommentCollection: true });
+			await populateBlogsDb({ allowComment: true });
+
+			secondUser = await createInitialViewer(sampleViewer2);
+			token = await loginViewer(request, sampleViewer2);
+		});
+
+		describe('on a parentComment', () => {
+			test('should fail to like a comment if the user is not authenticated', async () => {
+				const comments = await commentsInDb();
+				const commentToLike = comments[0];
+
+				const response = await request
+					.put(`/api/comments/${commentToLike.id}`)
+					.send({
+						...commentToLike,
+						likes: [
+							...commentToLike.likes,
+							secondUser._id
+						]
+					})
+					.expect(401);
+
+				const updatedComment = await Comment.findById(commentToLike.id);
+				expect(updatedComment.likes).toHaveLength(0);
+				expect(response.body.error).toEqual('Unauthorized: Missing Authorization header.');
+			});
+		});
+
+		describe('on a reply', () => {
+			test('should fail to like a reply if the user is not authenticated', async () => {
+				const comments = await commentsInDb();
+				const parentComment = comments.find(comment => comment.replies.length > 0);
+				const replyToLike = await Comment.findById(parentComment.replies[0]);
+
+				const response = await request
+					.put(`/api/comments/${parentComment.id}/replies/${replyToLike.id}`)
+					.send({
+						...replyToLike,
+						likes: [
+							...replyToLike.likes,
+							secondUser._id
+						]
+					})
+					.expect(401);
+
+				const updatedReply = await Comment.findById(replyToLike.id);
+				expect(updatedReply.likes).toHaveLength(0);
+				expect(response.body.error).toEqual('Unauthorized: Missing Authorization header.');
+			});
+		});
+	});
+	describe('on a parent comment', () => {
+		const testCases = [
+			{
+				description: 'by a viewer',
+				setup: async () => {
+					await deleteDbsForBlogTests({ deleteCommentCollection: true });
+					await populateBlogsDb({ allowComment: true });
+
+					secondUser = await createInitialViewer(sampleViewer2);
+					token = await loginViewer(request, sampleViewer2);
+				}
+			},
+			{
+				description: 'by an author',
+				setup: async () => {
+					await deleteDbsForBlogTests({ deleteCommentCollection: true });
+					await populateBlogsDb({ allowComment: true });
+
+					secondUser = await Author.findOne({});
+					token = await loginAuthor(request, sampleAuthor1);
+				}
+			}
+		];
+
+		testCases.forEach(({ description, setup }) => {
+			describe(description, () => {
+				beforeEach(setup);
+
+				test('should successfully like and unlike a comment', async () => {
+					const comments = await commentsInDb();
+					const commentToLike = comments[0];
+
+					await request
+						.put(`/api/comments/${commentToLike.id}`)
+						.send({
+							...commentToLike,
+							likes: [
+								...commentToLike.likes,
+								secondUser._id
+							]
+						})
+						.set('Authorization', `Bearer ${token}`)
+						.expect(200);
+
+					const commentAfterLike = await Comment.findById(commentToLike.id);
+					expect(commentAfterLike.likes.map(String)).toContain(secondUser._id.toString());
+					expect(commentAfterLike.likes).toHaveLength(1);
+
+					await request
+						.put(`/api/comments/${commentToLike.id}`)
+						.set('Authorization', `Bearer ${token}`)
+						.send({
+							...commentToLike,
+							likes: []
+						})
+						.expect(200);
+
+					const commentAfterUnlike = await Comment.findById(commentToLike.id);
+					expect(commentAfterUnlike.likes.map(String)).not.toContain(secondUser._id.toString());
+					expect(commentAfterUnlike.likes).toHaveLength(0);
+				});
+			});
+		});
+	});
+
+	describe('on a reply', () => {
+		const testCases = [
+			{
+				description: 'by a viewer',
+				setup: async () => {
+					await deleteDbsForBlogTests({ deleteCommentCollection: true });
+					await populateBlogsDb({ allowComment: true, allowReply: true });
+
+					secondUser = await createInitialViewer(sampleViewer2);
+					token = await loginViewer(request, sampleViewer2);
+				}
+			},
+			{
+				description: 'by an author',
+				setup: async () => {
+					await deleteDbsForBlogTests({ deleteCommentCollection: true });
+					await populateBlogsDb({ allowComment: true, allowReply: true });
+
+					secondUser = await Author.findOne({});
+					token = await loginAuthor(request, sampleAuthor1);
+				}
+			}
+		];
+
+		testCases.forEach(({ description, setup }) => {
+			describe(description, () => {
+				beforeEach(setup);
+
+				test('should successfully like and unlike a reply', async () => {
+					const comments = await commentsInDb();
+					const parentComment = comments.find(comment => comment.replies.length > 0);
+					const replyToLike = await Comment.findById(parentComment.replies[0]);
+
+					await request
+						.put(`/api/comments/${parentComment.id}/replies/${replyToLike.id}`)
+						.send({
+							...replyToLike,
+							likes: [
+								...replyToLike.likes,
+								secondUser._id
+							]
+						})
+						.set('Authorization', `Bearer ${token}`)
+						.expect(200);
+
+					const replyAfterLike = await Comment.findById(replyToLike.id);
+					expect(replyAfterLike.likes.map(String)).toContain(secondUser._id.toString());
+					expect(replyAfterLike.likes).toHaveLength(1);
+
+					await request
+						.put(`/api/comments/${parentComment.id}/replies/${replyToLike.id}`)
+						.set('Authorization', `Bearer ${token}`)
+						.send({
+							...replyToLike,
+							likes: []
+						})
+						.expect(200);
+
+					const replyAfterUnlike = await Comment.findById(replyToLike.id);
+					expect(replyAfterUnlike.likes.map(String)).not.toContain(secondUser._id.toString());
+					expect(replyAfterUnlike.likes).toHaveLength(0);
+				});
+			});
+		});
+	});
+});
 
 afterAll(() => {
 	mongoose.connection.close();

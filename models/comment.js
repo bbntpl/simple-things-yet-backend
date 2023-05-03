@@ -5,7 +5,9 @@ const { Schema } = mongoose;
 const commentSchema = new Schema({
 	content: {
 		type: String,
-		required: true
+		required: true,
+		min: 1,
+		max: 800,
 	},
 	likes: [
 		{
@@ -21,10 +23,27 @@ const commentSchema = new Schema({
 		type: Schema.Types.Date,
 		default: Date.now
 	},
-	viewer: {
-		required: true,
+	author: {
 		type: Schema.Types.ObjectId,
-		ref: 'Viewer'
+		ref: 'Author',
+		default: null,
+		validate: {
+			validator: function() {
+				return this.author !== null || this.viewer !== null;
+			},
+			message: 'Either author or viewer must be the user'
+		}
+	},
+	viewer: {
+		type: Schema.Types.ObjectId,
+		ref: 'Viewer',
+		default: null,
+		validate: {
+			validator: function() {
+				return this.author !== null || this.viewer !== null;
+			},
+			message: 'Either author or viewer must be the user'
+		}
 	},
 	blog: {
 		required: true,
@@ -42,7 +61,7 @@ const commentSchema = new Schema({
 			ref: 'Comment'
 		}
 	]
-})
+});
 
 commentSchema.pre('findOneAndUpdate', function (next) {
 	this.set({ updatedAt: new Date() });
@@ -56,7 +75,7 @@ commentSchema.set('toJSON', {
 		returnedObject.id = returnedObject._id.toString();
 		delete returnedObject._id;
 	},
-})
+});
 
 const Comment = mongoose.model('Comment', commentSchema);
 

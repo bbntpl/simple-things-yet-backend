@@ -1,5 +1,6 @@
 // Tests dataset
 
+// For more context: test data objects that has 1 in its name are the default ones
 // Sample data for author populate
 const authorDetails = {
 	name: 'Random Author',
@@ -59,5 +60,5 @@ exports.sampleComment1 = {
 };
 
 exports.sampleComment2 = {
-	comment: 'So far, what\'s your main opinion on the latest major changes of that technology?',
+	content: 'So far, what\'s your main opinion on the latest major changes of that technology?',
 };

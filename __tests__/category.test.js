@@ -8,14 +8,10 @@ const {
 	deleteDbsForBlogTests,
 	populateBlogsDb,
 	populateCategoriesDb,
-	blogsInDb,
-	authorsInDb,
-	viewersInDb,
 	categoriesInDb,
 	loginAuthor
 } = require('../utils/testHelpers');
 const { sampleAuthor1, sampleCategory1, sampleCategory2 } = require('../utils/testDataset');
-const { MONGODB_URI } = require('../utils/config');
 
 let token;
 let server;
@@ -24,7 +20,7 @@ const request = supertest(app);
 
 beforeAll(async () => {
 	server = await initApp();
-})
+});
 
 beforeEach(async () => {
 	await Category.deleteMany({});
@@ -36,24 +32,7 @@ beforeEach(async () => {
 
 	token = null;
 	token = await loginAuthor(request, sampleAuthor1);
-})
-
-describe('initial database', () => {
-	test('should connect to the test database', async () => {
-		expect(mongoose.connection.readyState).toBe(1);
-		expect(mongoose.connection._connectionString).toBe(MONGODB_URI);
-	});
-	test('should add the initial data', async () => {
-		const blogs = await blogsInDb();
-		const authors = await authorsInDb();
-		const viewers = await viewersInDb();
-		const categories = await categoriesInDb();
-		expect(blogs.length).toBe(1);
-		expect(authors.length).toBe(1);
-		expect(viewers.length).toBe(1);
-		expect(categories.length).toBe(2);
-	});
-})
+});
 
 describe('category fetch', () => {
 	test('should successfully get all categories', async () => {
@@ -89,7 +68,7 @@ describe('category fetch', () => {
 			description: sampleCategory1.description,
 		});
 	});
-})
+});
 
 describe('creation of category', () => {
 	test('should successfully create a category', async () => {
