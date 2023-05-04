@@ -1,6 +1,5 @@
 const Blog = require('../models/blog');
 const Category = require('../models/category');
-const Comment = require('../models/comment');
 
 exports.blogCreate = async (req, res, next) => {
 	const { title, content } = req.body;
@@ -129,12 +128,6 @@ exports.blogDelete = async (req, res, next) => {
 
 	try {
 		const blog = await Blog.findById(id);
-
-		if (blog.comments.length > 0) {
-			await Promise.all(blog.comments.map(async (id) => {
-				await Comment.findByIdAndRemove(id);
-			}));
-		}
 
 		const deletedBlog = await blog.deleteOne({ _id: blog._id });
 

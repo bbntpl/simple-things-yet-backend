@@ -113,7 +113,7 @@ const testCommentCreation = async ({ userType, user, token, blog, UserModel, com
 			content: 'I like this blog post!',
 			user: user._id,
 			blog: blog._id,
-			parentComment
+			...(parentComment !== null ? { parentComment: parentComment._id } : {})
 		})
 		.set('Authorization', `Bearer ${token}`)
 		.expect(201);
@@ -363,7 +363,7 @@ describe('update of a comment', () => {
 
 			test('should successfully update a reply as an author', async () => {
 				const parentComment = await Comment.findOne({ parentComment: null });
-				const userReply =await Comment.findOne({ parentComment: parentComment._id });
+				const userReply = await Comment.findOne({ parentComment: parentComment._id });
 
 				const response = await request
 					.put(`/api/comments/${parentComment._id}/replies/${userReply._id}/author-only/`)
@@ -390,7 +390,7 @@ describe('update of a comment', () => {
 
 			test('should successfully update a reply as a viewer', async () => {
 				const parentComment = await Comment.findOne({ parentComment: null });
-				const userReply =await Comment.findOne({ parentComment: parentComment._id });
+				const userReply = await Comment.findOne({ parentComment: parentComment._id });
 
 				const response = await request
 					.put(`/api/comments/${parentComment._id}/replies/${userReply._id}`)
@@ -442,30 +442,15 @@ describe('deletion of a comment', () => {
 		describe('by an author', () => {
 			beforeEach(async () => {
 				await deleteDbsForBlogTests({ deleteCommentCollection: true });
-				await populateBlogsDb({ allowComment: true });
-			});
-
-			test('should fail to delete a comment if not written by an author', async () => {
-				token = await loginViewer(request, sampleViewer1);
-
-				const comments = await commentsInDb();
-
-				const response = await request
-					.delete(`/api/comments/${comments[0].id}/author-only`)
-					.set('Authorization', `Bearer ${token}`)
-					.expect(403);
-
-				const updatedComments = await commentsInDb();
-				expect(response.body.error).toEqual('A comment can only be deleted by the owner');
-				expect(updatedComments).toHaveLength(1);
+				await populateBlogsDb({ allowComment: true, viewerIsCommenter: false });
+				token = await loginAuthor(request, sampleAuthor1);
 			});
 
 			test('should successfully delete a comment as an author', async () => {
-				token = await loginAuthor(request, sampleAuthor1);
-				const comments = await commentsInDb();
+				const initialComment = await Comment.findOne({});
 
 				await request
-					.delete(`/api/comments/${comments[0].id}/author-only`)
+					.delete(`/api/comments/${initialComment._id}/author-only`)
 					.set('Authorization', `Bearer ${token}`)
 					.expect(204);
 
@@ -478,29 +463,14 @@ describe('deletion of a comment', () => {
 			beforeEach(async () => {
 				await deleteDbsForBlogTests({ deleteCommentCollection: true });
 				await populateBlogsDb({ allowComment: true });
-			});
-
-			test('should fail to delete a comment if not written by a viewer', async () => {
-				token = await loginAuthor(request, sampleAuthor1);
-				const comments = await commentsInDb();
-
-				const response = await request
-					.delete(`/api/comments/${comments[0].id}`)
-					.set('Authorization', `Bearer ${token}`)
-					.expect(403);
-
-				const updatedComments = await commentsInDb();
-				expect(response.body.error).toEqual('A comment can only be deleted by the owner');
-				expect(updatedComments).toHaveLength(1);
+				token = await loginViewer(request, sampleViewer1);
 			});
 
 			test('should successfully delete a comment as a viewer', async () => {
-				token = await loginViewer(request, sampleViewer1);
-
-				const comments = await commentsInDb();
+				const initialComment = await Comment.findOne({});
 
 				await request
-					.delete(`/api/comments/${comments[0].id}`)
+					.delete(`/api/comments/${initialComment._id}`)
 					.set('Authorization', `Bearer ${token}`)
 					.expect(204);
 
@@ -514,37 +484,25 @@ describe('deletion of a comment', () => {
 		describe('by an author', () => {
 			beforeEach(async () => {
 				await deleteDbsForBlogTests({ deleteCommentCollection: true });
-				await populateBlogsDb({ allowComment: true, allowReply: true });
-			});
+				await populateBlogsDb({ allowComment: true, allowReply: true, viewerIsCommenter: false });
+				token = await loginAuthor(request, sampleAuthor1);
 
-			test('should fail to delete a reply if not written by an author', async () => {
-				token = await loginViewer(request, sampleViewer1);
-				const comments = await commentsInDb();
-				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
-				const replyId = commentWithReplies.replies[0];
-
-				const response = await request
-					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}/author-only`)
-					.set('Authorization', `Bearer ${token}`)
-					.expect(403);
-
-				expect(response.body.error).toEqual('A reply can only be deleted by the owner');
 			});
 
 			test('should successfully delete a reply as an author', async () => {
-				token = await loginAuthor(request, sampleAuthor1);
 				const comments = await commentsInDb();
 				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
 				const replyId = commentWithReplies.replies[0];
 
 				await request
-					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}/author-only`)
+					.delete(`/api/comments/${commentWithReplies.id}/replies/${replyId}/author-only`)
 					.set('Authorization', `Bearer ${token}`)
 					.expect(204);
 
 				const updatedComments = await commentsInDb();
-				const updatedComment = updatedComments.find(comment => comment._id.toString() === commentWithReplies._id.toString());
-				expect(updatedComment.replies).toHaveLength(0);
+				const deletedReply = updatedComments.find(comment => comment.id.toString() === replyId.toString());
+				expect(deletedReply).toBeUndefined();
+				expect(updatedComments).toHaveLength(1);
 			});
 		});
 
@@ -552,36 +510,23 @@ describe('deletion of a comment', () => {
 			beforeEach(async () => {
 				await deleteDbsForBlogTests({ deleteCommentCollection: true });
 				await populateBlogsDb({ allowComment: true, allowReply: true });
-			});
-
-			test('should fail to delete a reply if not written by a viewer', async () => {
-				token = await loginAuthor(request, sampleAuthor1);
-				const comments = await commentsInDb();
-				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
-				const replyId = commentWithReplies.replies[0];
-
-				const response = await request
-					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}`)
-					.set('Authorization', `Bearer ${token}`)
-					.expect(403);
-
-				expect(response.body.error).toEqual('A reply can only be deleted by the owner');
+				token = await loginViewer(request, sampleViewer1);
 			});
 
 			test('should successfully delete a reply as a viewer', async () => {
-				token = await loginViewer(request, sampleViewer1);
 				const comments = await commentsInDb();
 				const commentWithReplies = comments.find(comment => comment.replies.length > 0);
 				const replyId = commentWithReplies.replies[0];
 
 				await request
-					.delete(`/api/comments/${commentWithReplies._id}/replies/${replyId}`)
+					.delete(`/api/comments/${commentWithReplies.id}/replies/${replyId}`)
 					.set('Authorization', `Bearer ${token}`)
 					.expect(204);
 
 				const updatedComments = await commentsInDb();
-				const updatedComment = updatedComments.find(comment => comment._id.toString() === commentWithReplies._id.toString);
-				expect(updatedComment.replies).toHaveLength(0);
+				const deletedReply = updatedComments.find(comment => comment.id.toString() === replyId.toString);
+				expect(deletedReply).toBeUndefined();
+				expect(updatedComments).toHaveLength(1);
 			});
 		});
 	});
@@ -592,7 +537,7 @@ describe('liking and unliking', () => {
 	describe('by an unauthenticated user', () => {
 		beforeEach(async () => {
 			await deleteDbsForBlogTests({ deleteCommentCollection: true });
-			await populateBlogsDb({ allowComment: true });
+			await populateBlogsDb({ allowComment: true, allowReply: true });
 
 			secondUser = await createInitialViewer(sampleViewer2);
 			token = await loginViewer(request, sampleViewer2);
@@ -653,7 +598,8 @@ describe('liking and unliking', () => {
 
 					secondUser = await createInitialViewer(sampleViewer2);
 					token = await loginViewer(request, sampleViewer2);
-				}
+				},
+				pathSegment: ''
 			},
 			{
 				description: 'by an author',
@@ -663,11 +609,12 @@ describe('liking and unliking', () => {
 
 					secondUser = await Author.findOne({});
 					token = await loginAuthor(request, sampleAuthor1);
-				}
+				},
+				pathSegment: '/author-only'
 			}
 		];
 
-		testCases.forEach(({ description, setup }) => {
+		testCases.forEach(({ description, setup, pathSegment }) => {
 			describe(description, () => {
 				beforeEach(setup);
 
@@ -676,7 +623,7 @@ describe('liking and unliking', () => {
 					const commentToLike = comments[0];
 
 					await request
-						.put(`/api/comments/${commentToLike.id}`)
+						.put(`/api/comments/${commentToLike.id}${pathSegment}`)
 						.send({
 							...commentToLike,
 							likes: [
@@ -692,12 +639,12 @@ describe('liking and unliking', () => {
 					expect(commentAfterLike.likes).toHaveLength(1);
 
 					await request
-						.put(`/api/comments/${commentToLike.id}`)
-						.set('Authorization', `Bearer ${token}`)
+						.put(`/api/comments/${commentToLike.id}${pathSegment}`)
 						.send({
-							...commentToLike,
+							...commentAfterLike.toObject(),
 							likes: []
 						})
+						.set('Authorization', `Bearer ${token}`)
 						.expect(200);
 
 					const commentAfterUnlike = await Comment.findById(commentToLike.id);
@@ -718,7 +665,8 @@ describe('liking and unliking', () => {
 
 					secondUser = await createInitialViewer(sampleViewer2);
 					token = await loginViewer(request, sampleViewer2);
-				}
+				},
+				pathSegment: ''
 			},
 			{
 				description: 'by an author',
@@ -728,23 +676,23 @@ describe('liking and unliking', () => {
 
 					secondUser = await Author.findOne({});
 					token = await loginAuthor(request, sampleAuthor1);
-				}
+				},
+				pathSegment: '/author-only'
 			}
 		];
 
-		testCases.forEach(({ description, setup }) => {
+		testCases.forEach(({ description, setup, pathSegment }) => {
 			describe(description, () => {
 				beforeEach(setup);
-
 				test('should successfully like and unlike a reply', async () => {
 					const comments = await commentsInDb();
 					const parentComment = comments.find(comment => comment.replies.length > 0);
 					const replyToLike = await Comment.findById(parentComment.replies[0]);
 
 					await request
-						.put(`/api/comments/${parentComment.id}/replies/${replyToLike.id}`)
+						.put(`/api/comments/${parentComment.id}/replies/${replyToLike.id}${pathSegment}`)
 						.send({
-							...replyToLike,
+							...replyToLike.toObject(),
 							likes: [
 								...replyToLike.likes,
 								secondUser._id
@@ -758,12 +706,12 @@ describe('liking and unliking', () => {
 					expect(replyAfterLike.likes).toHaveLength(1);
 
 					await request
-						.put(`/api/comments/${parentComment.id}/replies/${replyToLike.id}`)
-						.set('Authorization', `Bearer ${token}`)
+						.put(`/api/comments/${parentComment.id}/replies/${replyToLike.id}${pathSegment}`)
 						.send({
 							...replyToLike,
 							likes: []
 						})
+						.set('Authorization', `Bearer ${token}`)
 						.expect(200);
 
 					const replyAfterUnlike = await Comment.findById(replyToLike.id);

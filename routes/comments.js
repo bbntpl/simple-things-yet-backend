@@ -9,7 +9,8 @@ const {
 	commentDelete,
 	validateCommentCreate,
 	replyCreate,
-	replyUpdate
+	replyUpdate,
+	replyDelete
 } = require('../controllers/comment');
 const Viewer = require('../models/viewer');
 const Author = require('../models/author');
@@ -41,7 +42,7 @@ router.post('/:parentCommentId/replies', validateCommentCreate, authenticateUser
 router.put('/:parentCommentId/replies/:replyId', authenticateUser(Viewer), replyUpdate);
 
 // Delete a reply as a viewer
-router.delete('/:parentCommentId/replies/:replyId', authenticateUser(Viewer), commentDelete);
+router.delete('/:parentCommentId/replies/:replyId', authenticateUser(Viewer), replyDelete);
 
 // Create a specific comment as an author
 router.post('/author-only', validateCommentCreate, authenticateUser(Author), commentCreate);
@@ -59,6 +60,6 @@ router.post('/:parentCommentId/replies/author-only', validateCommentCreate, auth
 router.put('/:parentCommentId/replies/:replyId/author-only', authenticateUser(Author), replyUpdate);
 
 // Delete a reply as an author
-router.delete('/:parentCommentId/replies/:replyId/author-only', authenticateUser(Author), commentDelete);
+router.delete('/:parentCommentId/replies/:replyId/author-only', authenticateUser(Author), replyDelete);
 
 module.exports = router;

@@ -162,7 +162,7 @@ describe('deletion of blog', () => {
 		expect(blogsAtEnd.body).toHaveLength(blogsAtStart.body.length - 1);
 	});
 
-	test('should delete a blog and its associated comments', async () => {
+	test('should delete a blog and its associated comments should not get deleted', async () => {
 		const blogToDelete = (
 			await request.get('/api/blogs')
 		).body[0];
@@ -176,7 +176,7 @@ describe('deletion of blog', () => {
 		const commentsAtEnd = await commentsInDb();
 
 		expect(blogsAtEnd.body).not.toContainEqual(blogToDelete);
-		expect(commentsAtEnd).toHaveLength(0);
+		expect(commentsAtEnd).toHaveLength(1);
 	});
 });
 

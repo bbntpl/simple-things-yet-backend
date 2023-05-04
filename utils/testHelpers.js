@@ -73,7 +73,7 @@ const createCommentForBlog = async (blog, viewer, author, isReply = false, paren
 		userType: viewer !== null ? 'viewer' : 'author',
 		user: viewer !== null ? viewer._id : author._id,
 		blog: blog.id,
-		parentComment: isReply && parentComment !== null ? parentComment._id : null,
+		...(isReply && parentComment !== null ? { parentComment: parentComment._id } : {}),
 	});
 
 	await blog.updateOne({

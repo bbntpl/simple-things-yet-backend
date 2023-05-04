@@ -33,6 +33,7 @@ exports.replies = async (req, res, next) => {
 		const comments = await Comment.findById(parentCommentId).populate(['viewer', 'author']);
 		return res.json(comments.replies);
 	} catch (err) {
+		console.log('Error:', err);
 		next(err);
 	}
 };
@@ -42,6 +43,7 @@ exports.comments = async (req, res, next) => {
 		const comments = await Comment.find({}).populate(['viewer', 'author']);
 		return res.json(comments);
 	} catch (err) {
+		console.log('Error:', err);
 		next(err);
 	}
 };
@@ -58,21 +60,26 @@ exports.commentFetch = async (req, res, next) => {
 
 		return res.json(comment);
 	} catch (err) {
+		console.log('Error:', err);
 		next(err);
 	}
 };
 
-const blogCommentListUpdate = async (blog, savedComment) => {
-	const relatedBlog = await Blog.findById(blog);
-	relatedBlog.comments.push(savedComment);
-	await relatedBlog.save();
+const blogCommentListUpdate = async (blogId, savedCommentId) => {
+	await Blog.findByIdAndUpdate(blogId, {
+		$push: {
+			comments: savedCommentId,
+		},
+	});
 };
 
-const userCommentListUpdate = async (userType, user, savedComment) => {
+const userCommentListUpdate = async (userType, userId, savedCommentId) => {
 	const UserModel = userType === 'author' ? Author : Viewer;
-	const commentWriter = await UserModel.findById(user);
-	commentWriter.comments.push(savedComment);
-	await commentWriter.save();
+	await UserModel.findByIdAndUpdate(userId, {
+		$push: {
+			comments: savedCommentId,
+		},
+	});
 };
 
 // Helper function to create comments and replies
@@ -93,8 +100,8 @@ const createCommentOrReply = async (req, isReply) => {
 
 	const savedComment = await comment.save();
 
-	blogCommentListUpdate(blog, savedComment);
-	userCommentListUpdate(userType, user, savedComment);
+	await blogCommentListUpdate(blog, savedComment._id);
+	await userCommentListUpdate(userType, user, savedComment._id);
 
 	if (isReply) {
 		await Comment.findByIdAndUpdate(parentComment, {
@@ -112,6 +119,7 @@ exports.commentCreate = async (req, res, next) => {
 		const savedComment = await createCommentOrReply(req, false);
 		return res.status(201).json(savedComment);
 	} catch (err) {
+		console.log('Error:', err);
 		next(err);
 	}
 };
@@ -121,20 +129,24 @@ exports.replyCreate = async (req, res, next) => {
 		const savedReply = await createCommentOrReply(req, true);
 		return res.status(201).json(savedReply);
 	} catch (err) {
+		console.log('Error:', err);
 		next(err);
 	}
 };
 
 const updateCommentOrReply = async (isReply, req, res, next) => {
-	const { content } = req.body;
 	const { parentCommentId, replyId } = req.params;
 
 	try {
 		const commentId = isReply ? replyId : parentCommentId;
 
+		const updatedBlog = {
+			...req.body,
+		};
+		
 		const updatedComment = await Comment.findByIdAndUpdate(
 			commentId,
-			{ content },
+			{ ...updatedBlog },
 			{ new: true }
 		);
 
@@ -144,6 +156,7 @@ const updateCommentOrReply = async (isReply, req, res, next) => {
 
 		return res.json(updatedComment);
 	} catch (err) {
+		console.log('Error:', err);
 		next(err);
 	}
 };
@@ -156,13 +169,6 @@ exports.replyUpdate = async (req, res, next) => {
 	await updateCommentOrReply(true, req, res, next);
 };
 
-const blogCommentListDelete = async (blogId, savedCommentId) => {
-	// Update blog's comment list
-	const blogThatReferencesComment = await Blog.findById(blogId);
-	blogThatReferencesComment.comments.pull(savedCommentId);
-	await blogThatReferencesComment.save();
-}
-
 const userCommentListDelete = async (userType, userId, savedCommentId) => {
 	const UserModel = userType === 'author' ? Author : Viewer;
 	const commentWriter = await UserModel.findById(userId);
@@ -174,6 +180,10 @@ const userCommentListDelete = async (userType, userId, savedCommentId) => {
 const deleteCommentOrReply = async (isReply, req, res, next) => {
 	const { parentCommentId, replyId } = req.params;
 
+	function isUserOwner(reqUserId, commentUser) {
+		return reqUserId.toString() === commentUser.toString();
+	}
+
 	try {
 		const commentId = isReply ? replyId : parentCommentId;
 		const userType = req.url.includes('/author-only') ? 'author' : 'viewer';
@@ -184,15 +194,21 @@ const deleteCommentOrReply = async (isReply, req, res, next) => {
 			return res.status(404).json({ error: 'Comment not found' });
 		}
 
-		blogCommentListDelete(comment.blog, commentId);
-		userCommentListDelete(userType, comment[userType], commentId);
-
-		if(isReply) {
-			
+		if (!isUserOwner(req.user._id, comment[userType])) {
+			return res.status(403).json({
+				error: `A ${isReply ? 'reply' : 'comment'} can only be deleted by the owner`
+			});
 		}
 
-		return res.status(204);
+		userCommentListDelete(userType, comment[userType], commentId);
+
+		await comment.deleteOne({ _id: comment._id })
+			.then(() => {
+				return res.status(204).send();
+			})
+			.catch(err => next(err));
 	} catch (err) {
+		console.log('Error:', err);
 		next(err);
 	}
 };
