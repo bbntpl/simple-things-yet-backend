@@ -6,7 +6,7 @@ const {
 	NODE_ENV
 } = process.env;
 
-const MONGODB_URI = process.env.NODE_ENV === 'test'
+const MONGODB_URI = process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development'
 	? process.env.TEST_MONGODB_URI
 	: process.env.MONGODB_URI;
 	

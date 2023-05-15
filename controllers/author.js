@@ -68,7 +68,11 @@ exports.authorRegister = async (req, res, next) => {
 
 		if (numOfAuthors >= 1) {
 			return res.status(403)
-				.json('message: You are only allowed to have one account');
+				.json({
+					errors: [...errors.array(), {
+						msg: 'You are only allowed to have one account'
+					}]
+				});
 		}
 
 		const passwordHash = await bcrypt.hash(password, 10);
@@ -101,7 +105,11 @@ exports.authorLogin = async (req, res, next) => {
 			: false;
 
 		if (!(author && isPasswordCorrect)) {
-			return res.status(401).json({ error: 'invalid username or password' });
+			return res.status(401).json({
+				errors: [
+					{ msg: 'invalid username or password' }
+				]
+			});
 		}
 
 		const authorForToken = {

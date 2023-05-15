@@ -71,7 +71,7 @@ app.use(unknownEndpoint);
 app.use(errorHandler);
 app.use(serverErrorHandler);
 
-if(NODE_ENV !== 'test') {
+if(NODE_ENV === 'development') {
 	initApp();
 }
 

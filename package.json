@@ -1,12 +1,14 @@
 {
 	"name": "blog-v1-backend",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "",
 	"main": "app.js",
 	"scripts": {
 		"start": "node app.js",
+		"start:test": "NODE_ENV=test nodemon app.js",
+		"prodstart": "NODE_ENV=production nodemon app.js",
 		"devstart": "NODE_ENV=development nodemon app.js",
-		"devstart:test": "NODE_ENV=test nodemon app.js",
+		"clearDb": "node clearDb.js",
 		"lint": "npx eslint .",
 		"test": "NODE_ENV=test jest --detectOpenHandles  --verbose --runInBand"
 	},

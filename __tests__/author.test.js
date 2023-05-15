@@ -106,7 +106,7 @@ describe('Registration of author', () => {
 		const createdAuthor = await Author.findById(response.body.id);
 		const numOfAuthors = await Author.countDocuments({});
 
-		expect(response.body).toContain('You are only allowed to have one account');
+		expect(response.body.errors[0]).toHaveProperty('msg', 'You are only allowed to have one account');
 		expect(createdAuthor).toBeNull();
 		expect(numOfAuthors).toEqual(1);
 	});
