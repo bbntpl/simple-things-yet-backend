@@ -153,19 +153,23 @@ describe('Update of author', () => {
 		token = await loginAuthor(request, sampleAuthor1);
 	});
 
-	test('should successfuly change name and bio', async () => {
+	test('should successfuly change name, bio and email', async () => {
+		const newAuthorInfo = {
+			name: 'B.B. Antipolo',
+			bio: 'Lifelong learner forever',
+			email: 'admin@gmail.com'
+		};
+
 		const response = await request
 			.put('/api/author/update')
-			.send({
-				name: 'B.B. Antipolo',
-				bio: 'Lifelong learner forever'
-			})
+			.send(newAuthorInfo)
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
 
-		expect(response.body.name).toEqual('B.B. Antipolo');
-		expect(response.body.bio).toEqual('Lifelong learner forever');
+		expect(response.body.name).toEqual(newAuthorInfo.name);
+		expect(response.body.bio).toEqual(newAuthorInfo.bio);
+		expect(response.body.email).toEqual(newAuthorInfo.email);
 	});
 });
 

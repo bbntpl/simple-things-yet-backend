@@ -6,6 +6,7 @@ const {
 	categoryFetch,
 	categoryUpdate,
 	categoryDelete,
+	validateCategory,
 } = require('../controllers/category');
 const Author = require('../models/author');
 
@@ -18,7 +19,7 @@ router.get('/', categories);
 router.get('/:id', categoryFetch);
 
 // Create a new category
-router.post('/', authenticateUser(Author), categoryCreate);
+router.post('/', authenticateUser(Author), validateCategory, categoryCreate);
 
 // Update an existing category
 router.put('/:id', authenticateUser(Author), categoryUpdate);

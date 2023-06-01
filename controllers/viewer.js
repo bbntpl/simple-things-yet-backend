@@ -105,7 +105,7 @@ exports.viewerFetch = async (req, res, next) => {
 	try {
 		const viewer = await Viewer.findById(req.params.id);
 		if (!viewer) {
-			return res.status(404).json({ error: 'Viewer not found' });
+			return res.status(404).json({ message: 'Viewer not found' });
 		}
 		return res.json(viewer);
 	} catch (err) {
@@ -160,7 +160,7 @@ exports.viewerPasswordChange = async (req, res, next) => {
 
 		const viewer = await Viewer.findById(req.params.id);
 		if (!viewer) {
-			return res.status(404).json({ error: 'Viewer not found' });
+			return res.status(404).json({ message: 'Viewer not found' });
 		}
 
 		const passwordCorrect = await bcrypt.compare(currentPassword, viewer.passwordHash);

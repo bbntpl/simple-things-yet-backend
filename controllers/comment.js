@@ -11,11 +11,6 @@ exports.validateCommentCreate = [
 		.withMessage('Content is required')
 		.isLength({ min: 1, max: 800 })
 		.withMessage('Content must be between 1 and 800 characters'),
-	body('user')
-		.notEmpty()
-		.withMessage('User is required')
-		.isMongoId()
-		.withMessage('Invalid user ID'),
 	body('blog')
 		.notEmpty()
 		.withMessage('Blog is required')
@@ -83,17 +78,19 @@ const userCommentListUpdate = async (userType, userId, savedCommentId) => {
 };
 
 // Helper function to create comments and replies
-const createCommentOrReply = async (req, isReply) => {
+const createCommentOrReply = async (res, req, isReply) => {
+	console.log(req.body);
+	console.log(req.user);
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		throw { status: 400, errors: errors.array() };
+		return res.status(400).json({ message: errors.array()[0].msg });
 	}
 
-	const { content, user, blog, parentComment } = req.body;
+	const { content, blog, parentComment } = req.body;
 	const userType = req.url.includes('/author-only') ? 'author' : 'viewer';
 	const comment = new Comment({
 		content,
-		[userType]: user,
+		[userType]: req.user._id,
 		blog,
 		parentComment: isReply ? parentComment : null,
 	});
@@ -116,7 +113,7 @@ const createCommentOrReply = async (req, isReply) => {
 
 exports.commentCreate = async (req, res, next) => {
 	try {
-		const savedComment = await createCommentOrReply(req, false);
+		const savedComment = await createCommentOrReply(res, req, false);
 		return res.status(201).json(savedComment);
 	} catch (err) {
 		console.log('Error:', err);
@@ -126,7 +123,7 @@ exports.commentCreate = async (req, res, next) => {
 
 exports.replyCreate = async (req, res, next) => {
 	try {
-		const savedReply = await createCommentOrReply(req, true);
+		const savedReply = await createCommentOrReply(res, req, true);
 		return res.status(201).json(savedReply);
 	} catch (err) {
 		console.log('Error:', err);
@@ -143,7 +140,7 @@ const updateCommentOrReply = async (isReply, req, res, next) => {
 		const updatedBlog = {
 			...req.body,
 		};
-		
+
 		const updatedComment = await Comment.findByIdAndUpdate(
 			commentId,
 			{ ...updatedBlog },

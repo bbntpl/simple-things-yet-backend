@@ -1,6 +1,25 @@
+const { body, validationResult } = require('express-validator');
 const Category = require('../models/category');
 
+const validateCategory = [
+	body('name')
+		.trim()
+		.notEmpty()
+		.withMessage('Name is a required input')
+		.isString()
+		.withMessage('The type of name must be string')
+];
+
+exports.validateCategory = [
+	...validateCategory
+];
+
 exports.categoryCreate = async (req, res, next) => {
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+
 	const { name, description } = req.body;
 	try {
 		const isCategoryExists = await Category.findOne({ name });
@@ -38,7 +57,13 @@ exports.categoryFetch = async (req, res, next) => {
 };
 
 exports.categoryUpdate = async (req, res, next) => {
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+
 	const { id } = req.params;
+
 	try {
 		const updatedCategory = {
 			name: req.body.name,
@@ -51,6 +76,10 @@ exports.categoryUpdate = async (req, res, next) => {
 			updatedCategory,
 			{ new: true }
 		);
+
+		if (!categoryToUpdate) {
+			return res.status(400).json({ error: `category "${req.body.name}" doesn/'t exist` });
+		}
 
 		return res.json(categoryToUpdate);
 	} catch (err) {

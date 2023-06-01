@@ -1,17 +1,46 @@
 const Blog = require('../models/blog');
 const Category = require('../models/category');
 
-exports.blogCreate = async (req, res, next) => {
-	const { title, content } = req.body;
+const insertBlogToCategory = async (categoryId, blogId) => {
+	console.log(categoryId, blogId);
 	try {
+		await Category.findByIdAndUpdate(
+			categoryId,
+			{
+				$push: {
+					blogs: blogId
+				}
+			}
+		);
+	} catch (error) {
+		console.log(error);
+	}
+};
+
+exports.blogCreate = async (req, res, next) => {
+	const { title, content, isPrivate, categories } = req.body;
+	try {
+
+		if (!title || !content) {
+			return res.status(400).json({ message: 'The blog must have title and content' });
+		}
+
 		const blog = new Blog({
 			title,
 			content,
-			author: req.user._id
+			author: req.user._id,
+			categories: categories || [],
+			isPrivate: isPrivate
 		});
-
 		const savedBlog = await blog.save();
 
+		if (categories) {
+			// Make sure that the categories has reference to the blog	
+			const insertBlogToCategoryPromises
+				= categories.map(category => insertBlogToCategory(category, blog._id));
+
+			await Promise.all(insertBlogToCategoryPromises);
+		}
 		return res.status(201).json(savedBlog);
 	} catch (err) {
 		next(err);
@@ -34,7 +63,7 @@ exports.blogFetch = async (req, res, next) => {
 		const blog = await Blog.findById(id).populate('author');
 
 		if (!blog) {
-			return res.status(404).json({ error: 'Blog not found' });
+			return res.status(404).json({ message: 'Blog not found' });
 		}
 
 		return res.json(blog);

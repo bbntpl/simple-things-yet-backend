@@ -86,7 +86,7 @@ describe('creation of category', () => {
 		const categoriesAtEnd = await categoriesInDb();
 		expect(categoriesAtEnd).toHaveLength(3);
 		const categoryNames = categoriesAtEnd.map(c => c.name);
-		expect(categoryNames).toContain(newCategory.name);
+		expect(categoryNames).toContain(newCategory.name.toLowerCase());
 	});
 
 	test('should fail to create a category if it already exists', async () => {
@@ -163,8 +163,9 @@ describe('update of category', () => {
 		const categoryToUpdate = categoriesAtStart[0];
 		const updatedCategory = {
 			blogs: categoryToUpdate.blogs,
-			name: 'Updated Category Name',
+			name: 'updated category name',
 			description: 'Updated Category Description',
+			id: categoryToUpdate.id
 		};
 
 		await request

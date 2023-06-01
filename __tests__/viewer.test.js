@@ -69,7 +69,7 @@ describe('fetch viewer object', () => {
 			.expect('Content-Type', /application\/json/)
 			.expect(404);
 
-		const error = response.body.error;
+		const error = response.body.message;
 		expect(error).toEqual('Viewer not found');
 	});
 });

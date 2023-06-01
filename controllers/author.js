@@ -5,6 +5,13 @@ const { body, validationResult } = require('express-validator');
 const Author = require('../models/author');
 const { SECRET_KEY } = require('../utils/config');
 
+exports.validateEmail = [
+	body('email')
+		.trim()
+		.isEmail()
+		.withMessage('Invalid email')
+];
+
 exports.validateAuthor = [
 	body('email')
 		.trim()
@@ -21,18 +28,25 @@ exports.validateAuthor = [
 ];
 
 exports.authorUpdate = async (req, res, next) => {
-	const { name, bio } = req.body;
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({
+			message: errors.array()[0].msg
+		});
+	}
+
+	const { name, bio, email } = req.body;
 	try {
 		const author = req.user;
 
 		const updatedAuthor = await Author.findByIdAndUpdate(
 			author.id,
-			{ name, bio },
+			{ name, bio, email },
 			{ new: true }
 		);
 
 		if (!updatedAuthor) {
-			return res.status(404).json({ error: 'Author not found' });
+			return res.status(404).json({ message: 'Author not found' });
 		}
 
 		return res.json(updatedAuthor);
@@ -46,7 +60,7 @@ exports.authorFetch = async (req, res, next) => {
 		const author = await Author.findOne({});
 
 		if (!author) {
-			return res.status(404).json({ error: 'Author not found' });
+			return res.status(404).json({ message: 'Author not found' });
 		}
 
 		return res.json(author);
@@ -120,7 +134,8 @@ exports.authorLogin = async (req, res, next) => {
 		const token = jwt.sign(
 			authorForToken,
 			SECRET_KEY,
-			{ expiresIn: 60 * 60 }
+			// expires in 2 hours
+			{ expiresIn: 60 * 60 * 2 }
 		);
 
 		return res.json({

@@ -41,7 +41,7 @@ const blogSchema = new Schema({
 			ref: 'Category'
 		}
 	],
-	private: {
+	isPrivate: {
 		type: Boolean,
 		default: true
 	}

@@ -61,7 +61,7 @@ describe('fetching blogs', () => {
 
 		expect(initialBlog.content).toEqual(sampleBlog1.content);
 		expect(initialBlog.title).toEqual(sampleBlog1.title);
-		expect(initialBlog.private).toBeTruthy();
+		expect(initialBlog.isPrivate).toBeTruthy();
 	});
 
 	test('should return specific blog', async () => {
@@ -74,7 +74,7 @@ describe('fetching blogs', () => {
 		const initialBlog = response.body;
 		expect(initialBlog.content).toEqual(blog.content);
 		expect(initialBlog.title).toEqual(blog.title);
-		expect(initialBlog.private).toBeTruthy();
+		expect(initialBlog.isPrivate).toBeTruthy();
 	});
 
 	test('should be associated to the initial author', async () => {
@@ -303,12 +303,12 @@ describe('update of blog', () => {
 		// Update the blog by toggling the private property
 		await request
 			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
-			.send({ ...blogToUpdate, private: !blogToUpdate.private })
+			.send({ ...blogToUpdate, isPrivate: !blogToUpdate.isPrivate })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
 		const blogsAtEnd = await blogsInDb();
-		expect(blogsAtEnd[0].private).toBeFalsy();
+		expect(blogsAtEnd[0].isPrivate).toBeFalsy();
 	});
 });
 
@@ -330,7 +330,7 @@ describe('liking a blog feature', () => {
 			title: blog.title,
 			content: blog.content,
 			author: blog.author,
-			private: blog.private,
+			isPrivate: blog.isPrivate,
 			createdAt: blog.createdAt,
 			updatedAt: blog.updatedAt,
 			comments: blog.comments,
