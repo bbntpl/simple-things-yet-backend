@@ -30,7 +30,7 @@ exports.validateAuthor = [
 exports.authorUpdate = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		return res.status(400).json({
+		res.status(400).json({
 			message: errors.array()[0].msg
 		});
 	}
@@ -46,10 +46,10 @@ exports.authorUpdate = async (req, res, next) => {
 		);
 
 		if (!updatedAuthor) {
-			return res.status(404).json({ message: 'Author not found' });
+			res.status(404).json({ message: 'Author not found' });
 		}
 
-		return res.json(updatedAuthor);
+		res.json(updatedAuthor);
 	} catch (err) {
 		next(err);
 	}
@@ -60,10 +60,10 @@ exports.authorFetch = async (req, res, next) => {
 		const author = await Author.findOne({});
 
 		if (!author) {
-			return res.status(404).json({ message: 'Author not found' });
+			res.status(404).json({ message: 'Author not found' });
 		}
 
-		return res.json(author);
+		res.json(author);
 	} catch (err) {
 		next(err);
 	}
@@ -72,7 +72,7 @@ exports.authorFetch = async (req, res, next) => {
 exports.authorRegister = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
+		res.status(400).json({ errors: errors.array() });
 	}
 
 	const { email, username, password, bio } = req.body;
@@ -81,7 +81,7 @@ exports.authorRegister = async (req, res, next) => {
 		const numOfAuthors = await Author.countDocuments({});
 
 		if (numOfAuthors >= 1) {
-			return res.status(403)
+			res.status(403)
 				.json({
 					errors: [...errors.array(), {
 						msg: 'You are only allowed to have one account'
@@ -119,7 +119,7 @@ exports.authorLogin = async (req, res, next) => {
 			: false;
 
 		if (!(author && isPasswordCorrect)) {
-			return res.status(401).json({
+			res.status(401).json({
 				errors: [
 					{ msg: 'invalid username or password' }
 				]
@@ -138,7 +138,7 @@ exports.authorLogin = async (req, res, next) => {
 			{ expiresIn: 60 * 60 * 2 }
 		);
 
-		return res.json({
+		res.json({
 			token,
 			username: author.username,
 			name: author.name

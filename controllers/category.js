@@ -17,7 +17,7 @@ exports.validateCategory = [
 exports.categoryCreate = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
+		res.status(400).json({ errors: errors.array() });
 	}
 
 	const { name, description } = req.body;
@@ -25,13 +25,13 @@ exports.categoryCreate = async (req, res, next) => {
 		const isCategoryExists = await Category.findOne({ name });
 
 		if (isCategoryExists) {
-			return res.status(400).json({ error: `Category ${name} exists already` });
+			res.status(400).json({ error: `Category ${name} exists already` });
 		}
 
 		const newCategory = new Category({ name, description });
 		await newCategory.save();
 
-		return res.status(201).json(newCategory);
+		res.status(201).json(newCategory);
 	} catch (err) {
 		next(err);
 	}
@@ -40,7 +40,7 @@ exports.categoryCreate = async (req, res, next) => {
 exports.categories = async (req, res, next) => {
 	try {
 		const categories = await Category.find({});
-		return res.json(categories);
+		res.json(categories);
 	} catch (err) {
 		next(err);
 	}
@@ -50,7 +50,7 @@ exports.categoryFetch = async (req, res, next) => {
 	const { id } = req.params;
 	try {
 		const category = await Category.findById(id);
-		return res.json(category);
+		res.json(category);
 	} catch (err) {
 		next(err);
 	}
@@ -59,7 +59,7 @@ exports.categoryFetch = async (req, res, next) => {
 exports.categoryUpdate = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
+		res.status(400).json({ errors: errors.array() });
 	}
 
 	const { id } = req.params;
@@ -78,10 +78,10 @@ exports.categoryUpdate = async (req, res, next) => {
 		);
 
 		if (!categoryToUpdate) {
-			return res.status(400).json({ error: `category "${req.body.name}" doesn/'t exist` });
+			res.status(400).json({ error: `category "${req.body.name}" doesn/'t exist` });
 		}
 
-		return res.json(categoryToUpdate);
+		res.json(categoryToUpdate);
 	} catch (err) {
 		next(err);
 	}
@@ -92,13 +92,13 @@ exports.categoryDelete = async (req, res, next) => {
 	try {
 		const category = await Category.findById(id);
 		if (category.blogs.length > 0) {
-			return res.status(400).json({
+			res.status(400).json({
 				message: 'You must remove all the associated blogs before deleting this category'
 			});
 		}
 
 		await category.deleteOne({ _id: category._id });
-		return res.status(204).json(category);
+		res.status(204).json(category);
 	} catch (err) {
 		next(err);
 	}

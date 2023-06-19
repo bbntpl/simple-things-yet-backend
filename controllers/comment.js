@@ -26,7 +26,7 @@ exports.replies = async (req, res, next) => {
 	const { parentCommentId } = req.params;
 	try {
 		const comments = await Comment.findById(parentCommentId).populate(['viewer', 'author']);
-		return res.json(comments.replies);
+		res.json(comments.replies);
 	} catch (err) {
 		console.log('Error:', err);
 		next(err);
@@ -36,7 +36,7 @@ exports.replies = async (req, res, next) => {
 exports.comments = async (req, res, next) => {
 	try {
 		const comments = await Comment.find({}).populate(['viewer', 'author']);
-		return res.json(comments);
+		res.json(comments);
 	} catch (err) {
 		console.log('Error:', err);
 		next(err);
@@ -50,10 +50,10 @@ exports.commentFetch = async (req, res, next) => {
 		const comment = await Comment.findById(parentCommentId).populate(['viewer', 'author']);
 
 		if (!comment) {
-			return res.status(404).json({ error: 'Comment not found' });
+			res.status(404).json({ error: 'Comment not found' });
 		}
 
-		return res.json(comment);
+		res.json(comment);
 	} catch (err) {
 		console.log('Error:', err);
 		next(err);
@@ -83,7 +83,7 @@ const createCommentOrReply = async (res, req, isReply) => {
 	console.log(req.user);
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		return res.status(400).json({ message: errors.array()[0].msg });
+		res.status(400).json({ message: errors.array()[0].msg });
 	}
 
 	const { content, blog, parentComment } = req.body;
@@ -98,7 +98,7 @@ const createCommentOrReply = async (res, req, isReply) => {
 	const savedComment = await comment.save();
 
 	await blogCommentListUpdate(blog, savedComment._id);
-	await userCommentListUpdate(userType, user, savedComment._id);
+	await userCommentListUpdate(userType, req.user._id, savedComment._id);
 
 	if (isReply) {
 		await Comment.findByIdAndUpdate(parentComment, {
@@ -114,7 +114,7 @@ const createCommentOrReply = async (res, req, isReply) => {
 exports.commentCreate = async (req, res, next) => {
 	try {
 		const savedComment = await createCommentOrReply(res, req, false);
-		return res.status(201).json(savedComment);
+		res.status(201).json(savedComment);
 	} catch (err) {
 		console.log('Error:', err);
 		next(err);
@@ -124,7 +124,7 @@ exports.commentCreate = async (req, res, next) => {
 exports.replyCreate = async (req, res, next) => {
 	try {
 		const savedReply = await createCommentOrReply(res, req, true);
-		return res.status(201).json(savedReply);
+		res.status(201).json(savedReply);
 	} catch (err) {
 		console.log('Error:', err);
 		next(err);
@@ -148,10 +148,10 @@ const updateCommentOrReply = async (isReply, req, res, next) => {
 		);
 
 		if (!updatedComment) {
-			return res.status(404).json({ error: 'Comment not found' });
+			res.status(404).json({ error: 'Comment not found' });
 		}
 
-		return res.json(updatedComment);
+		res.json(updatedComment);
 	} catch (err) {
 		console.log('Error:', err);
 		next(err);
@@ -188,11 +188,11 @@ const deleteCommentOrReply = async (isReply, req, res, next) => {
 		const comment = await Comment.findById(commentId);
 
 		if (!comment) {
-			return res.status(404).json({ error: 'Comment not found' });
+			res.status(404).json({ error: 'Comment not found' });
 		}
 
 		if (!isUserOwner(req.user._id, comment[userType])) {
-			return res.status(403).json({
+			res.status(403).json({
 				error: `A ${isReply ? 'reply' : 'comment'} can only be deleted by the owner`
 			});
 		}
@@ -201,7 +201,7 @@ const deleteCommentOrReply = async (isReply, req, res, next) => {
 
 		await comment.deleteOne({ _id: comment._id })
 			.then(() => {
-				return res.status(204).send();
+				res.status(204).send();
 			})
 			.catch(err => next(err));
 	} catch (err) {

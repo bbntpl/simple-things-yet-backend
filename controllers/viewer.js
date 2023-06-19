@@ -41,21 +41,21 @@ exports.validateViewerLogin = [
 exports.viewerRegister = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
+		res.status(400).json({ errors: errors.array() });
 	}
 
 	const { name, username, password } = req.body;
 	try {
 		const existingViewer = await Viewer.findOne({ username });
 		if (existingViewer) {
-			return res.status(400).json({ error: 'Username is already taken' });
+			res.status(400).json({ error: 'Username is already taken' });
 		}
 
 		const passwordHash = await bcrypt.hash(password, 10);
 		const viewer = new Viewer({ name, username, passwordHash });
 
 		const savedViewer = await viewer.save();
-		return res.status(201).json(savedViewer);
+		res.status(201).json(savedViewer);
 	} catch (err) {
 		next(err);
 	}
@@ -64,19 +64,19 @@ exports.viewerRegister = async (req, res, next) => {
 exports.viewerLogin = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
+		res.status(400).json({ errors: errors.array() });
 	}
 
 	const { username, password } = req.body;
 	try {
 		const viewer = await Viewer.findOne({ username });
 		if (!viewer) {
-			return res.status(400).json({ error: 'Invalid username' });
+			res.status(400).json({ error: 'Invalid username' });
 		}
 
 		const passwordCorrect = await bcrypt.compare(password, viewer.passwordHash);
 		if (!passwordCorrect) {
-			return res.status(400).json({ error: 'Invalid password' });
+			res.status(400).json({ error: 'Invalid password' });
 		}
 
 		const userForToken = {
@@ -91,7 +91,7 @@ exports.viewerLogin = async (req, res, next) => {
 			{ expiresIn: 60 * 60 }
 		);
 
-		return res.send({
+		res.send({
 			token,
 			username: viewer.username,
 			name: viewer.name
@@ -105,9 +105,9 @@ exports.viewerFetch = async (req, res, next) => {
 	try {
 		const viewer = await Viewer.findById(req.params.id);
 		if (!viewer) {
-			return res.status(404).json({ message: 'Viewer not found' });
+			res.status(404).json({ message: 'Viewer not found' });
 		}
-		return res.json(viewer);
+		res.json(viewer);
 	} catch (err) {
 		next(err);
 	}
@@ -116,7 +116,7 @@ exports.viewerFetch = async (req, res, next) => {
 exports.viewers = async (req, res, next) => {
 	try {
 		const viewers = await Viewer.find({});
-		return res.json(viewers);
+		res.json(viewers);
 	} catch (err) {
 		next(err);
 	}
@@ -129,7 +129,7 @@ exports.viewerUpdate = async (req, res, next) => {
 		const existingViewer = await Viewer.findById(req.params.id);
 
 		if (!existingViewer) {
-			return res.status(404).json({ error: 'Viewer not found' });
+			res.status(404).json({ error: 'Viewer not found' });
 		}
 
 		const updatedViewer = {
@@ -144,7 +144,7 @@ exports.viewerUpdate = async (req, res, next) => {
 			{ new: true }
 		);
 
-		return res.json(viewer);
+		res.json(viewer);
 	} catch (err) {
 		next(err);
 	}
@@ -155,22 +155,22 @@ exports.viewerPasswordChange = async (req, res, next) => {
 
 	try {
 		if (newPassword !== confirmPassword) {
-			return res.status(400).json({ error: 'Password confirmation does not match' });
+			res.status(400).json({ error: 'Password confirmation does not match' });
 		}
 
 		const viewer = await Viewer.findById(req.params.id);
 		if (!viewer) {
-			return res.status(404).json({ message: 'Viewer not found' });
+			res.status(404).json({ message: 'Viewer not found' });
 		}
 
 		const passwordCorrect = await bcrypt.compare(currentPassword, viewer.passwordHash);
 		if (!passwordCorrect) {
-			return res.status(400).json({ error: 'Current password is incorrect' });
+			res.status(400).json({ error: 'Current password is incorrect' });
 		}
 
 		viewer.passwordHash = await bcrypt.hash(newPassword, 10);
 		await viewer.save();
-		return res.status(200).json({ message: 'Password updated successfully' });
+		res.status(200).json({ message: 'Password updated successfully' });
 	} catch (err) {
 		next(err);
 	}
@@ -182,17 +182,17 @@ exports.viewerDelete = async (req, res, next) => {
 	try {
 		const viewer = await Viewer.findById(req.params.id);
 		if (!viewer) {
-			return res.status(404).json({ error: 'Viewer not found' });
+			res.status(404).json({ error: 'Viewer not found' });
 		}
 
 		const passwordCorrect = await bcrypt.compare(password, viewer.passwordHash);
 		if (!passwordCorrect) {
-			return res.status(400).json({ error: 'Incorrect password' });
+			res.status(400).json({ error: 'Incorrect password' });
 		}
 
 		const deletedViewer = await Viewer.deleteOne({ _id: req.params.id });
 
-		return res.status(204).json(deletedViewer);
+		res.status(204).json(deletedViewer);
 	} catch (err) {
 		next(err);
 	}

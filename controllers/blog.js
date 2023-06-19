@@ -22,7 +22,7 @@ exports.blogCreate = async (req, res, next) => {
 	try {
 
 		if (!title || !content) {
-			return res.status(400).json({ message: 'The blog must have title and content' });
+			res.status(400).json({ message: 'The blog must have title and content' });
 		}
 
 		const blog = new Blog({
@@ -41,7 +41,7 @@ exports.blogCreate = async (req, res, next) => {
 
 			await Promise.all(insertBlogToCategoryPromises);
 		}
-		return res.status(201).json(savedBlog);
+		res.status(201).json(savedBlog);
 	} catch (err) {
 		next(err);
 	}
@@ -50,7 +50,7 @@ exports.blogCreate = async (req, res, next) => {
 exports.blogs = async (req, res, next) => {
 	try {
 		const blogs = await Blog.find({});
-		return res.json(blogs);
+		res.json(blogs);
 	} catch (err) {
 		next(err);
 	}
@@ -63,12 +63,20 @@ exports.blogFetch = async (req, res, next) => {
 		const blog = await Blog.findById(id).populate('author');
 
 		if (!blog) {
-			return res.status(404).json({ message: 'Blog not found' });
+			res.status(404).json({ message: 'Blog not found' });
 		}
 
-		return res.json(blog);
+		res.json(blog);
 	} catch (err) {
 		next(err);
+	}
+};
+
+const removeBlogIdsFromCategories = async (categories, blogToUpdateId) => {
+	for (const categoryId of categories) {
+		const category = await Category.findById(categoryId);
+		category.blogs = category.blogs.filter(blogId => blogId.toString() !== blogToUpdateId.toString());
+		await category.save();
 	}
 };
 
@@ -79,11 +87,7 @@ const blogCategoryUpdate = async (blogToUpdate, updatedData) => {
 
 	if (hasCategoryUpdates) {
 		// Remove blog reference from old categories
-		for (const categoryId of oldCategories) {
-			const category = await Category.findById(categoryId);
-			category.blogs = category.blogs.filter(blogId => blogId.toString() !== blogToUpdate._id.toString());
-			await category.save();
-		}
+		await removeBlogIdsFromCategories(oldCategories, blogToUpdate._id);
 
 		// Add blog reference to new categories
 		for (const categoryId of newCategories) {
@@ -133,7 +137,7 @@ exports.blogUpdate = async (req, res, next) => {
 		const blogToUpdate = await Blog.findById(id);
 
 		if (!blogToUpdate) {
-			return res.status(404).json({ error: 'Blog not found' });
+			res.status(404).json({ error: 'Blog not found' });
 		}
 
 		const updatedData = { ...req.body };
@@ -146,7 +150,7 @@ exports.blogUpdate = async (req, res, next) => {
 			{ new: true }
 		);
 
-		return res.json(updatedBlog);
+		res.json(updatedBlog);
 	} catch (err) {
 		next(err);
 	}
@@ -158,9 +162,15 @@ exports.blogDelete = async (req, res, next) => {
 	try {
 		const blog = await Blog.findById(id);
 
-		const deletedBlog = await blog.deleteOne({ _id: blog._id });
+		const deletedBlog = await blog.deleteOne({ _id: blog._id })
+			.then(doc => {
+				removeBlogIdsFromCategories(doc.categories, doc._id)
+					.then(() => {
+						console.log('blog is successfully deleted');
+					});
+			});
 
-		return res.status(204).json(deletedBlog);
+		res.status(204).json(deletedBlog);
 
 	} catch (err) {
 		next(err);
