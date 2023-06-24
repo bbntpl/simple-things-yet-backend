@@ -19,11 +19,11 @@ const errorHandler = (err, req, res, next) => {
 	console.error(err.message);
 
 	if (err.name === 'CastError') {
-		res.status(400).send({ error: 'malformatted id' });
+		return res.status(400).send({ error: 'malformatted id' });
 	} else if (err.name === 'ValidationError') {
-		res.status(400).json({ error: err.message });
+		return res.status(400).json({ error: err.message });
 	} else if (err.name === 'JsonWebTokenError') {
-		res.status(401).json({ error: 'invalid token' });
+		return res.status(401).json({ error: 'invalid token' });
 	}
 
 	next(err);
@@ -43,7 +43,7 @@ const authenticateUser = (UserModel) => async (req, res, next) => {
 	const authHeader = req.header('Authorization');
 
 	if (!authHeader) {
-		res.status(401).json({ error: 'Unauthorized: Missing Authorization header.' });
+		return res.status(401).json({ error: 'Unauthorized: Missing Authorization header.' });
 	}
 	const token = authHeader.replace('Bearer ', '');
 	try {

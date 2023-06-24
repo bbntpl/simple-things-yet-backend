@@ -30,7 +30,7 @@ exports.validateAuthor = [
 exports.authorUpdate = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		res.status(400).json({
+		return res.status(400).json({
 			message: errors.array()[0].msg
 		});
 	}
@@ -46,7 +46,7 @@ exports.authorUpdate = async (req, res, next) => {
 		);
 
 		if (!updatedAuthor) {
-			res.status(404).json({ message: 'Author not found' });
+			return res.status(404).json({ message: 'Author not found' });
 		}
 
 		res.json(updatedAuthor);
@@ -60,7 +60,7 @@ exports.authorFetch = async (req, res, next) => {
 		const author = await Author.findOne({});
 
 		if (!author) {
-			res.status(404).json({ message: 'Author not found' });
+			return res.status(404).json({ message: 'Author not found' });
 		}
 
 		res.json(author);
@@ -72,7 +72,7 @@ exports.authorFetch = async (req, res, next) => {
 exports.authorRegister = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		res.status(400).json({ errors: errors.array() });
+		return res.status(400).json({ errors: errors.array() });
 	}
 
 	const { email, username, password, bio } = req.body;
@@ -81,7 +81,7 @@ exports.authorRegister = async (req, res, next) => {
 		const numOfAuthors = await Author.countDocuments({});
 
 		if (numOfAuthors >= 1) {
-			res.status(403)
+			return res.status(403)
 				.json({
 					errors: [...errors.array(), {
 						msg: 'You are only allowed to have one account'
@@ -119,7 +119,7 @@ exports.authorLogin = async (req, res, next) => {
 			: false;
 
 		if (!(author && isPasswordCorrect)) {
-			res.status(401).json({
+			return res.status(401).json({
 				errors: [
 					{ msg: 'invalid username or password' }
 				]
@@ -135,7 +135,7 @@ exports.authorLogin = async (req, res, next) => {
 			authorForToken,
 			SECRET_KEY,
 			// expires in 2 hours
-			{ expiresIn: 60 * 60 * 2 }
+			{ expiresIn: '2d' }
 		);
 
 		res.json({

@@ -139,7 +139,7 @@ const loginAuthor = async (api, author) => {
 			username: author.username,
 			password: author.password
 		});
-	response.body.token;
+	return response.body.token;
 };
 
 const loginViewer = async (api, viewer) => {
@@ -149,7 +149,7 @@ const loginViewer = async (api, viewer) => {
 			username: viewer.username,
 			password: viewer.password
 		});
-	response.body.token;
+	return response.body.token;
 };
 
 const blogsInDb = async () => {

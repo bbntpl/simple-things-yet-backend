@@ -20,9 +20,8 @@ const insertBlogToCategory = async (categoryId, blogId) => {
 exports.blogCreate = async (req, res, next) => {
 	const { title, content, isPrivate, categories } = req.body;
 	try {
-
 		if (!title || !content) {
-			res.status(400).json({ message: 'The blog must have title and content' });
+			return res.status(400).json({ message: 'The blog must have title and content' });
 		}
 
 		const blog = new Blog({
@@ -63,7 +62,7 @@ exports.blogFetch = async (req, res, next) => {
 		const blog = await Blog.findById(id).populate('author');
 
 		if (!blog) {
-			res.status(404).json({ message: 'Blog not found' });
+			return res.status(404).json({ message: 'Blog not found' });
 		}
 
 		res.json(blog);
@@ -137,7 +136,7 @@ exports.blogUpdate = async (req, res, next) => {
 		const blogToUpdate = await Blog.findById(id);
 
 		if (!blogToUpdate) {
-			res.status(404).json({ error: 'Blog not found' });
+			return res.status(404).json({ error: 'Blog not found' });
 		}
 
 		const updatedData = { ...req.body };

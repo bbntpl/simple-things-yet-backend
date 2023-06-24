@@ -50,7 +50,7 @@ exports.commentFetch = async (req, res, next) => {
 		const comment = await Comment.findById(parentCommentId).populate(['viewer', 'author']);
 
 		if (!comment) {
-			res.status(404).json({ error: 'Comment not found' });
+			return res.status(404).json({ error: 'Comment not found' });
 		}
 
 		res.json(comment);
@@ -83,7 +83,7 @@ const createCommentOrReply = async (res, req, isReply) => {
 	console.log(req.user);
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
-		res.status(400).json({ message: errors.array()[0].msg });
+		return res.status(400).json({ message: errors.array()[0].msg });
 	}
 
 	const { content, blog, parentComment } = req.body;
@@ -148,7 +148,7 @@ const updateCommentOrReply = async (isReply, req, res, next) => {
 		);
 
 		if (!updatedComment) {
-			res.status(404).json({ error: 'Comment not found' });
+			return res.status(404).json({ error: 'Comment not found' });
 		}
 
 		res.json(updatedComment);
@@ -188,11 +188,11 @@ const deleteCommentOrReply = async (isReply, req, res, next) => {
 		const comment = await Comment.findById(commentId);
 
 		if (!comment) {
-			res.status(404).json({ error: 'Comment not found' });
+			return res.status(404).json({ error: 'Comment not found' });
 		}
 
 		if (!isUserOwner(req.user._id, comment[userType])) {
-			res.status(403).json({
+			return res.status(403).json({
 				error: `A ${isReply ? 'reply' : 'comment'} can only be deleted by the owner`
 			});
 		}
