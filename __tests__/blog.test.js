@@ -31,14 +31,20 @@ beforeAll(async () => {
 	server = await initApp();
 });
 
-const postBlog = async (blog, token) => {
+const postBlog = async (blog, token, publishAction) => {
+	if (!['save', 'publish'].includes(publishAction)) {
+		throw new Error('Invalid postType');
+	}
 	return await request
-		.post('/api/blogs')
+		.post(`/api/blogs/${publishAction}`)
 		.send(blog)
 		.set('Authorization', `Bearer ${token}`)
 		.expect('Content-Type', /application\/json/)
 		.expect(201);
 };
+
+const saveBlog = (blog, token) => postBlog(blog, token, 'save');
+const publishBlog = (blog, token) => postBlog(blog, token, 'publish');
 
 const getBlogs = async () => {
 	return await request.get('/api/blogs')
@@ -102,35 +108,68 @@ describe('creation of blog', () => {
 		token = await loginAuthor(request, sampleAuthor1);
 	});
 
-	test('should add a valid blog', async () => {
-		await postBlog(sampleBlog2, token);
+	test('should publish a valid blog', async () => {
+		await publishBlog(sampleBlog2, token);
 		const response = await getBlogs();
 
 		const blogs = response.body;
+		const blogToValidate = blogs.find(blog => {
+			return blog.title === sampleBlog2.title
+				&& blog.content === sampleBlog2.content;
+		});
 
-		const titles = blogs.map(r => r.title);
-		const contents = blogs.map(r => r.content);
-		expect(titles).toContain(sampleBlog2.title);
-		expect(contents).toContain(sampleBlog2.content);
+		expect(blogToValidate).toBeTruthy();
+		expect(blogToValidate.isPublished).toBeTruthy();
 		expect(blogs).toHaveLength(2);
 	});
 
-	test('should include reference to the only author', async () => {
-		const author = (await authorsInDb())[0];
-		await postBlog(sampleBlog2, token);
+	test('should save a blog as a draft (not published)', async () => {
+		await saveBlog(sampleBlog2, token);
 		const response = await getBlogs();
 
 		const blogs = response.body;
+		const blogToValidate = blogs.find(blog => {
+			return blog.title === sampleBlog2.title
+				&& blog.content === sampleBlog2.content;
+		});
 
-		// Making sure both blogs are owned by the only author
-		// by verifying the presence of the associated id
-		const isOnlyAuthorReferenced
-			= blogs.reduce((total, blog) => {
-				if (blog.author.toString() === author.id.toString()) {
-					return total + 1;
-				}
-			}, 0) === 2;
-		expect(isOnlyAuthorReferenced).toBeTruthy();
+		expect(blogToValidate).toBeTruthy();
+		expect(blogToValidate.isPublished).toBeFalsy();
+		expect(blogs).toHaveLength(2);
+	});
+
+	describe('that is published', () => {
+		test('should include reference to the only author', async () => {
+			const author = (await authorsInDb())[0];
+			await publishBlog(sampleBlog2, token);
+			const response = await getBlogs();
+
+			const blogs = response.body;
+
+			// Making sure both blogs are owned by the only author
+			// by verifying the presence of the associated id
+			const isOnlyAuthorReferenced
+				= blogs.reduce((total, blog) => {
+					if (blog.author.toString() === author.id.toString()) {
+						return total + 1;
+					}
+				}, 0) === 2;
+			expect(isOnlyAuthorReferenced).toBeTruthy();
+		});
+
+		test('should set the publish date after publication', async () => {
+			await publishBlog(sampleBlog2, token);
+			const response = await getBlogs();
+
+			const blogs = response.body;
+			const blogToValidate = blogs.find(blog => {
+				return blog.title === sampleBlog2.title
+					&& blog.content === sampleBlog2.content;
+			});
+
+			expect(blogToValidate.isPublished).toBeTruthy();
+			expect(blogToValidate.publishedAt).toBeTruthy();
+		});
 	});
 });
 
@@ -199,7 +238,7 @@ describe('update of blog', () => {
 		};
 
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send(updatedBlog)
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -223,7 +262,7 @@ describe('update of blog', () => {
 		};
 
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send(updatedBlog)
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -242,7 +281,7 @@ describe('update of blog', () => {
 
 		// Update the blog to add category association
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send({
 				...blogToUpdate,
 				categories: [
@@ -281,7 +320,7 @@ describe('update of blog', () => {
 
 		// Update the blog to remove the category association
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send({ ...blogToUpdate.toObject(), categories: [] })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -302,7 +341,7 @@ describe('update of blog', () => {
 
 		// Update the blog by toggling the private property
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send({ ...blogToUpdate, isPrivate: !blogToUpdate.isPrivate })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);

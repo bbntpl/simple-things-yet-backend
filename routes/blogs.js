@@ -23,8 +23,11 @@ router.get('/:id', blogFetch);
 // Create a new blog
 router.post('/', authenticateUser(Author), blogCreate);
 
+// Save/publish a new blog or update an existing draft blog
+router.post('/:publishAction', authenticateUser(Author), blogCreate); // for creating a new draft blog
+
 // Update an existing blog by author
-router.put('/:id/authors-only', authenticateUser(Author), blogUpdate);
+router.put('/:id/:publishAction/authors-only', authenticateUser(Author), blogUpdate);
 
 // Indirect update of an existing blog based on user's interactions
 router.put('/:id', authenticateUser(Viewer), blogUpdate);

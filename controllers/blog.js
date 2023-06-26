@@ -20,29 +20,46 @@ const insertBlogToCategory = async (categoryId, blogId) => {
 exports.blogCreate = async (req, res, next) => {
 	const { title, content, isPrivate, categories } = req.body;
 	try {
-		if (!title || !content) {
-			return res.status(400).json({ message: 'The blog must have title and content' });
+
+		if (!content) {
+			return res.status(400).json({ error: 'The blog must have content' });
 		}
 
-		const blog = new Blog({
+		if (!title) {
+			return res.status(400).json({ error: 'The blog must have title and content' });
+		}
+
+		let blog;
+		const { publishAction } = req.params;
+
+		if (!['save', 'publish'].includes(publishAction)) {
+			return res.status(400).json({ error: 'Invalid publishAction' });
+		}
+
+		blog = new Blog({
 			title,
 			content,
 			author: req.user._id,
 			categories: categories || [],
 			isPrivate: isPrivate
 		});
+
+		if (publishAction === 'publish') {
+			blog.isPublished = true;
+			blog.publishedAt = Date.now();
+		}
+
 		const savedBlog = await blog.save();
 
 		if (categories) {
-			// Make sure that the categories has reference to the blog	
 			const insertBlogToCategoryPromises
 				= categories.map(category => insertBlogToCategory(category, blog._id));
-
 			await Promise.all(insertBlogToCategoryPromises);
 		}
+
 		res.status(201).json(savedBlog);
-	} catch (err) {
-		next(err);
+	} catch (error) {
+		next(error);
 	}
 };
 
@@ -130,7 +147,7 @@ const blogLikesUpdate = async (blogToUpdate, updatedData) => {
 };
 
 exports.blogUpdate = async (req, res, next) => {
-	const { id } = req.params;
+	const { id, publishAction } = req.params;
 	const { likes, ...restOfBlogContents } = req.body;
 	try {
 		const blogToUpdate = await Blog.findById(id);
@@ -138,8 +155,18 @@ exports.blogUpdate = async (req, res, next) => {
 		if (!blogToUpdate) {
 			return res.status(404).json({ error: 'Blog not found' });
 		}
+		console.log(blogToUpdate.author.toString(), req.user._id.toString());
+		if (blogToUpdate.author.toString() !== req.user._id.toString()
+			&& req.originalUrl.includes('authors-only')) {
+			return res.status(403).json({ error: 'Unauthorized' });
+		}
 
 		const updatedData = { ...req.body };
+
+		if (publishAction === 'publish') {
+			blogToUpdate.isPublished = true;
+			blogToUpdate.publishedAt = Date.now();
+		}
 
 		await blogCategoryUpdate(blogToUpdate, updatedData);
 		await blogLikesUpdate(blogToUpdate, updatedData);

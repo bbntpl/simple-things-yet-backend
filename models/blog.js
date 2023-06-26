@@ -21,11 +21,19 @@ const blogSchema = new Schema({
 			ref: 'Viewer'
 		}
 	],
+	isPublished: {
+		type: Boolean,
+		default: false
+	},
 	createdAt: {
 		type: Schema.Types.Date,
 		default: Date.now
 	},
 	updatedAt: {
+		type: Schema.Types.Date,
+		default: Date.now
+	},
+	publishedAt: {
 		type: Schema.Types.Date,
 		default: Date.now
 	},
@@ -51,6 +59,15 @@ blogSchema.pre('findOneAndUpdate', function (next) {
 	this.set({ updatedAt: new Date() });
 	next();
 });
+
+blogSchema.pre('save', function (next) {
+	if (this.isPublished && !this.publishedAt) {
+		this.set({ publishedAt: new Date() });
+	}
+	
+	next();
+});
+
 
 // Transform output after converting it to JSON
 blogSchema.set('toJSON', {
