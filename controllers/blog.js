@@ -2,7 +2,6 @@ const Blog = require('../models/blog');
 const Category = require('../models/category');
 
 const insertBlogToCategory = async (categoryId, blogId) => {
-	console.log(categoryId, blogId);
 	try {
 		await Category.findByIdAndUpdate(
 			categoryId,
@@ -21,11 +20,7 @@ exports.blogCreate = async (req, res, next) => {
 	const { title, content, isPrivate, categories } = req.body;
 	try {
 
-		if (!content) {
-			return res.status(400).json({ error: 'The blog must have content' });
-		}
-
-		if (!title) {
+		if (!title || !content) {
 			return res.status(400).json({ error: 'The blog must have title and content' });
 		}
 
@@ -46,7 +41,6 @@ exports.blogCreate = async (req, res, next) => {
 
 		if (publishAction === 'publish') {
 			blog.isPublished = true;
-			blog.publishedAt = Date.now();
 		}
 
 		const savedBlog = await blog.save();
@@ -148,31 +142,28 @@ const blogLikesUpdate = async (blogToUpdate, updatedData) => {
 
 exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
-	const { likes, ...restOfBlogContents } = req.body;
+	const { likes, author, ...restOfBlogContents } = req.body;
 	try {
 		const blogToUpdate = await Blog.findById(id);
 
 		if (!blogToUpdate) {
 			return res.status(404).json({ error: 'Blog not found' });
 		}
-		console.log(blogToUpdate.author.toString(), req.user._id.toString());
 		if (blogToUpdate.author.toString() !== req.user._id.toString()
 			&& req.originalUrl.includes('authors-only')) {
 			return res.status(403).json({ error: 'Unauthorized' });
 		}
 
-		const updatedData = { ...req.body };
-
 		if (publishAction === 'publish') {
 			blogToUpdate.isPublished = true;
-			blogToUpdate.publishedAt = Date.now();
+			blogToUpdate.save();
 		}
-
-		await blogCategoryUpdate(blogToUpdate, updatedData);
-		await blogLikesUpdate(blogToUpdate, updatedData);
+		console.log(restOfBlogContents);
+		await blogCategoryUpdate(blogToUpdate, req.body);
+		await blogLikesUpdate(blogToUpdate, req.body);
 		const updatedBlog = await Blog.findByIdAndUpdate(
 			id,
-			restOfBlogContents,
+			{ author: author.id, ...restOfBlogContents },
 			{ new: true }
 		);
 

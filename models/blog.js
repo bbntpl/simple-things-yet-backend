@@ -33,10 +33,7 @@ const blogSchema = new Schema({
 		type: Schema.Types.Date,
 		default: Date.now
 	},
-	publishedAt: {
-		type: Schema.Types.Date,
-		default: Date.now
-	},
+	publishedAt: Schema.Types.Date,
 	comments: [
 		{
 			type: Schema.Types.ObjectId,
