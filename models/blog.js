@@ -40,10 +40,14 @@ const blogSchema = new Schema({
 			ref: 'Comment'
 		}
 	],
-	categories: [
+	category: {
+		type: Schema.Types.ObjectId,
+		ref: 'Category'
+	},
+	tags: [
 		{
 			type: Schema.Types.ObjectId,
-			ref: 'Category'
+			ref: 'Tag'
 		}
 	],
 	isPrivate: {
@@ -61,7 +65,7 @@ blogSchema.pre('save', function (next) {
 	if (this.isPublished && !this.publishedAt) {
 		this.set({ publishedAt: new Date() });
 	}
-	
+
 	next();
 });
 

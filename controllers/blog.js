@@ -1,27 +1,25 @@
 const Blog = require('../models/blog');
-const Category = require('../models/category');
+const Tag = require('../models/tag');
 
-const insertBlogToCategory = async (categoryId, blogId) => {
+const insertBlogToTag = async (tagId, blogId) => {
 	try {
-		await Category.findByIdAndUpdate(
-			categoryId,
-			{
-				$push: {
-					blogs: blogId
-				}
-			}
-		);
+		await Tag.findByIdAndUpdate(tagId, {
+			$push: {
+				blogs: blogId,
+			},
+		});
 	} catch (error) {
 		console.log(error);
 	}
 };
 
 exports.blogCreate = async (req, res, next) => {
-	const { title, content, isPrivate, categories } = req.body;
+	const { title, content, isPrivate, tags } = req.body;
 	try {
-
 		if (!title || !content) {
-			return res.status(400).json({ error: 'The blog must have title and content' });
+			return res
+				.status(400)
+				.json({ error: 'The blog must have title and content' });
 		}
 
 		let blog;
@@ -35,8 +33,8 @@ exports.blogCreate = async (req, res, next) => {
 			title,
 			content,
 			author: req.user._id,
-			categories: categories || [],
-			isPrivate: isPrivate
+			tags: tags || [],
+			isPrivate: isPrivate,
 		});
 
 		if (publishAction === 'publish') {
@@ -45,10 +43,11 @@ exports.blogCreate = async (req, res, next) => {
 
 		const savedBlog = await blog.save();
 
-		if (categories) {
-			const insertBlogToCategoryPromises
-				= categories.map(category => insertBlogToCategory(category, blog._id));
-			await Promise.all(insertBlogToCategoryPromises);
+		if (tags) {
+			const insertBlogToTagPromises = tags.map((tag) =>
+				insertBlogToTag(tag, blog._id)
+			);
+			await Promise.all(insertBlogToTagPromises);
 		}
 
 		res.status(201).json(savedBlog);
@@ -61,6 +60,18 @@ exports.blogs = async (req, res, next) => {
 	try {
 		const blogs = await Blog.find({});
 		res.json(blogs);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.publishedBlogListFetch = async (req, res, next) => {
+	try {
+		const publishedBlogs = await Blog.find({
+			isPublished: true,
+			isPrivate: false
+		});
+		res.json(publishedBlogs);
 	} catch (err) {
 		next(err);
 	}
@@ -82,28 +93,32 @@ exports.blogFetch = async (req, res, next) => {
 	}
 };
 
-const removeBlogIdsFromCategories = async (categories, blogToUpdateId) => {
-	for (const categoryId of categories) {
-		const category = await Category.findById(categoryId);
-		category.blogs = category.blogs.filter(blogId => blogId.toString() !== blogToUpdateId.toString());
-		await category.save();
+const removeBlogIdsFromCategories = async (tags, blogToUpdateId) => {
+	for (const tagId of tags) {
+		const tag = await Tag.findById(tagId);
+		tag.blogs = tag.blogs.filter(
+			(blogId) => blogId.toString() !== blogToUpdateId.toString()
+		);
+		await tag.save();
 	}
 };
 
-const blogCategoryUpdate = async (blogToUpdate, updatedData) => {
-	const oldCategories = blogToUpdate.categories;
-	const newCategories = updatedData.categories;
-	const hasCategoryUpdates = JSON.stringify(oldCategories.sort()) !== JSON.stringify(newCategories.sort());
+const blogTagUpdate = async (blogToUpdate, updatedData) => {
+	const oldCategories = blogToUpdate.tags;
+	const newCategories = updatedData.tags;
+	const hasTagUpdates =
+		JSON.stringify(oldCategories.sort()) !==
+		JSON.stringify(newCategories.sort());
 
-	if (hasCategoryUpdates) {
-		// Remove blog reference from old categories
+	if (hasTagUpdates) {
+		// Remove blog reference from old tags
 		await removeBlogIdsFromCategories(oldCategories, blogToUpdate._id);
 
-		// Add blog reference to new categories
-		for (const categoryId of newCategories) {
-			const category = await Category.findById(categoryId);
-			category.blogs.push(blogToUpdate._id);
-			await category.save();
+		// Add blog reference to new tags
+		for (const tagId of newCategories) {
+			const tag = await Tag.findById(tagId);
+			tag.blogs.push(blogToUpdate._id);
+			await tag.save();
 		}
 	}
 };
@@ -120,8 +135,9 @@ const blogLikesUpdate = async (blogToUpdate, updatedData) => {
 
 	if (hasLikesDuplicate) return;
 
-	const hasNoLikesUpdate = oldLikesSet.size === newLikesSet.size
-		&& [...oldLikesSet].every(id => newLikesSet.has(id));
+	const hasNoLikesUpdate =
+		oldLikesSet.size === newLikesSet.size &&
+		[...oldLikesSet].every((id) => newLikesSet.has(id));
 
 	// No updates needed because the likes arrays are the same
 	if (hasNoLikesUpdate) return;
@@ -130,27 +146,38 @@ const blogLikesUpdate = async (blogToUpdate, updatedData) => {
 
 	if (oldLikesSet.size < newLikesSet.size) {
 		// A viewer id gests added on likes array
-		updatedLikes = [...oldLikesSet, ...newLikesSet].filter(id => !oldLikesSet.has(id) || !newLikesSet.has(id));
+		updatedLikes = [...oldLikesSet, ...newLikesSet].filter(
+			(id) => !oldLikesSet.has(id) || !newLikesSet.has(id)
+		);
 	} else {
 		// A viewer id gets removed on likes array
-		updatedLikes = oldLikes.filter(id => newLikesSet.has(id.toString()));
+		updatedLikes = oldLikes.filter((id) => newLikesSet.has(id.toString()));
 	}
 
-	const blog = await Blog.findByIdAndUpdate(blogToUpdate._id, { likes: updatedLikes });
+	const blog = await Blog.findByIdAndUpdate(blogToUpdate._id, {
+		likes: updatedLikes,
+	});
 	await blog.save();
 };
 
 exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
-	const { likes, author, ...restOfBlogContents } = req.body;
+	const {
+		author,
+		title,
+		content,
+		isPrivate
+	} = req.body;
 	try {
 		const blogToUpdate = await Blog.findById(id);
 
 		if (!blogToUpdate) {
 			return res.status(404).json({ error: 'Blog not found' });
 		}
-		if (blogToUpdate.author.toString() !== req.user._id.toString()
-			&& req.originalUrl.includes('authors-only')) {
+		if (
+			blogToUpdate.author.toString() !== req.user._id.toString() &&
+			req.originalUrl.includes('authors-only')
+		) {
 			return res.status(403).json({ error: 'Unauthorized' });
 		}
 
@@ -158,12 +185,19 @@ exports.blogUpdate = async (req, res, next) => {
 			blogToUpdate.isPublished = true;
 			blogToUpdate.save();
 		}
-		console.log(restOfBlogContents);
-		await blogCategoryUpdate(blogToUpdate, req.body);
+		await blogTagUpdate(blogToUpdate, req.body);
 		await blogLikesUpdate(blogToUpdate, req.body);
+
+		const propsToUpdate = {
+			title,
+			content,
+			isPrivate,
+			author: author.id
+		};
+
 		const updatedBlog = await Blog.findByIdAndUpdate(
 			id,
-			{ author: author.id, ...restOfBlogContents },
+			{ ...propsToUpdate },
 			{ new: true }
 		);
 
@@ -179,16 +213,13 @@ exports.blogDelete = async (req, res, next) => {
 	try {
 		const blog = await Blog.findById(id);
 
-		const deletedBlog = await blog.deleteOne({ _id: blog._id })
-			.then(doc => {
-				removeBlogIdsFromCategories(doc.categories, doc._id)
-					.then(() => {
-						console.log('blog is successfully deleted');
-					});
+		const deletedBlog = await blog.deleteOne({ _id: blog._id }).then((doc) => {
+			removeBlogIdsFromCategories(doc.tags, doc._id).then(() => {
+				console.log('blog is successfully deleted');
 			});
+		});
 
 		res.status(204).json(deletedBlog);
-
 	} catch (err) {
 		next(err);
 	}

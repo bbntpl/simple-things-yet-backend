@@ -43,6 +43,16 @@ exports.sampleCategory2 = {
 	description: 'This area is how to maintain healthiness'
 };
 
+// Sample data for categorie populate
+exports.sampleTag1 = {
+	name: 'reverse engineering',
+};
+
+exports.sampleTag2 = {
+	name: 'hardcore diet',
+};
+
+
 // Sample data for blog populate
 exports.sampleBlog1 = {
 	title: 'Test Blog',

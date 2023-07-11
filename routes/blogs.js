@@ -6,6 +6,7 @@ const {
 	blogCreate,
 	blogFetch,
 	blogs,
+	publishedBlogListFetch,
 	blogUpdate,
 	blogDelete,
 } = require('../controllers/blog');
@@ -16,6 +17,9 @@ const router = express.Router();
 
 // Get all the blogs
 router.get('/', blogs);
+
+// Get all published blogs
+router.get('/published', publishedBlogListFetch);
 
 // Get specific blog by ID
 router.get('/:id', blogFetch);

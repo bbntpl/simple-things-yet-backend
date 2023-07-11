@@ -15,10 +15,10 @@ const {
 	sampleAuthor1,
 	sampleBlog2,
 	sampleBlog1,
-	sampleCategory1,
+	sampleTag1,
 	sampleViewer1
 } = require('../utils/testDataset');
-const Category = require('../models/category');
+const Tag = require('../models/tag');
 const Blog = require('../models/blog');
 const Viewer = require('../models/viewer');
 
@@ -272,67 +272,67 @@ describe('update of blog', () => {
 		expect(updatedAtEnd).not.toBe(updatedAtStart);
 	});
 
-	test('should successfully add category to blog', async () => {
+	test('should successfully add tag to blog', async () => {
 		const blogsAtStart = await blogsInDb();
 		const blogToUpdate = blogsAtStart[0];
 
-		const category = new Category(sampleCategory1);
-		await category.save();
+		const tag = new Tag(sampleTag1);
+		await tag.save();
 
-		// Update the blog to add category association
+		// Update the blog to add tag association
 		await request
 			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send({
 				...blogToUpdate,
-				categories: [
-					...blogToUpdate.categories,
-					category._id
+				tags: [
+					...blogToUpdate.tags,
+					tag._id
 				]
 			})
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
 		const blogsAtEnd = await blogsInDb();
-		const updatedCategory = await Category.findById(category._id);
+		const updatedTag = await Tag.findById(tag._id);
 
-		expect(blogsAtEnd[0].categories).toHaveLength(1);
-		expect(blogsAtEnd[0].categories.map(String)).toContain(category._id.toString());
-		expect(updatedCategory.blogs).toHaveLength(1);
-		expect(updatedCategory.blogs.map(String)).toContain(blogsAtEnd[0].id.toString());
+		expect(blogsAtEnd[0].tags).toHaveLength(1);
+		expect(blogsAtEnd[0].tags.map(String)).toContain(tag._id.toString());
+		expect(updatedTag.blogs).toHaveLength(1);
+		expect(updatedTag.blogs.map(String)).toContain(blogsAtEnd[0].id.toString());
 
-		await Category.deleteMany({});
+		await Tag.deleteMany({});
 	});
 
-	test('should remove blog reference within category after uncategorization', async () => {
+	test('should remove blog reference within tag after uncategorization', async () => {
 		const blogToUpdate = await Blog.findOne({});
-		const category = new Category(sampleCategory1);
+		const tag = new Tag(sampleTag1);
 
-		// Add blog reference to category
-		category.blogs.push(blogToUpdate._id);
-		await category.save();
+		// Add blog reference to tag
+		tag.blogs.push(blogToUpdate._id);
+		await tag.save();
 
-		// Add category reference to blog
-		blogToUpdate.categories.push(category._id);
+		// Add tag reference to blog
+		blogToUpdate.tags.push(tag._id);
 		await blogToUpdate.save();
 
-		expect(category.blogs).toHaveLength(1);
-		expect(blogToUpdate.categories).toHaveLength(1);
+		expect(tag.blogs).toHaveLength(1);
+		expect(blogToUpdate.tags).toHaveLength(1);
 
-		// Update the blog to remove the category association
+		// Update the blog to remove the tag association
 		await request
 			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
-			.send({ ...blogToUpdate.toObject(), categories: [] })
+			.send({ ...blogToUpdate.toObject(), tags: [] })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
-		// Fetch the updated category from the database
-		const updatedCategory = await Category.findById(category._id);
+		// Fetch the updated tag from the database
+		const updatedTag = await Tag.findById(tag._id);
 
-		// Verify that the blog reference is removed from the category
-		expect(updatedCategory.blogs).toHaveLength(0);
-		expect(updatedCategory.blogs).not.toContain(blogToUpdate._id);
+		// Verify that the blog reference is removed from the tag
+		expect(updatedTag.blogs).toHaveLength(0);
+		expect(updatedTag.blogs).not.toContain(blogToUpdate._id);
 
-		await Category.deleteMany({});
+		await Tag.deleteMany({});
 	});
 
 	test('should verify that the blog is not private', async () => {
@@ -373,7 +373,7 @@ describe('liking a blog feature', () => {
 			createdAt: blog.createdAt,
 			updatedAt: blog.updatedAt,
 			comments: blog.comments,
-			categories: blog.categories
+			tags: blog.tags
 		};
 	});
 

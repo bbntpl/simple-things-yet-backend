@@ -79,8 +79,6 @@ const userCommentListUpdate = async (userType, userId, savedCommentId) => {
 
 // Helper function to create comments and replies
 const createCommentOrReply = async (res, req, isReply) => {
-	console.log(req.body);
-	console.log(req.user);
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
 		return res.status(400).json({ message: errors.array()[0].msg });

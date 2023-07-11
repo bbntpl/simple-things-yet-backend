@@ -19,19 +19,19 @@ const viewerSchema = new Schema({
 	passwordHash: {
 		type: String,
 		required: true,
-		minlength: 8
+		minlength: 8,
 	},
 	createdAt: {
 		type: mongoose.Schema.Types.Date,
-		default: Date.now
+		default: Date.now,
 	},
 	comments: [
 		{
 			type: Schema.Types.ObjectId,
-			ref: 'Comment'
-		}
+			ref: 'Comment',
+		},
 	],
-})
+});
 
 // Transform output after converting it to JSON
 viewerSchema.set('toJSON', {

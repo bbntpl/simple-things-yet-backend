@@ -17,9 +17,10 @@ const {
 } = require('./utils/config');
 const authorRouter = require('./routes/author');
 const blogsRouter = require('./routes/blogs');
-const categoriesRouter = require('./routes/categories');
+const tagsRouter = require('./routes/tags');
 const commentsRouter = require('./routes/comments');
 const viewersRouter = require('./routes/viewers');
+const categoriesRouter = require('./routes/categories');
 
 const app = express();
 
@@ -62,16 +63,17 @@ app.use(express.urlencoded({ extended: true }));
 // Setup routes
 app.use('/api/author', authorRouter);
 app.use('/api/blogs', blogsRouter);
-app.use('/api/categories', categoriesRouter);
+app.use('/api/tags', tagsRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/viewer', viewersRouter);
+app.use('/api/categories', categoriesRouter);
 
 // Setup error handlers as middleware
 app.use(unknownEndpoint);
 app.use(errorHandler);
 app.use(serverErrorHandler);
 
-if(NODE_ENV !== 'test') {
+if (NODE_ENV !== 'test') {
 	initApp();
 }
 

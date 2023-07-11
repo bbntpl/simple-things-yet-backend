@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 
 const Author = require('../models/author');
 const Viewer = require('../models/viewer');
-const Category = require('../models/category');
+const Tag = require('../models/tag');
 const Blog = require('../models/blog');
 const Comment = require('../models/comment');
 const {
@@ -10,10 +10,13 @@ const {
 	sampleViewer1,
 	sampleBlog1,
 	sampleComment1,
+	sampleTag1,
+	sampleTag2,
+	sampleComment2,
 	sampleCategory1,
 	sampleCategory2,
-	sampleComment2,
 } = require('../utils/testDataset');
+const Category = require('../models/category');
 
 const deleteDbsForBlogTests = async ({
 	deleteCommentCollection = false
@@ -124,6 +127,14 @@ const populateBlogsDb = async ({
 	}
 };
 
+const populateTagsDb = async () => {
+	const tag1 = new Tag(sampleTag1);
+	const tag2 = new Tag(sampleTag2);
+
+	await tag1.save();
+	await tag2.save();
+};
+
 const populateCategoriesDb = async () => {
 	const category1 = new Category(sampleCategory1);
 	const category2 = new Category(sampleCategory2);
@@ -173,8 +184,13 @@ const viewersInDb = async () => {
 };
 
 const categoriesInDb = async () => {
-	const categories = await Category.find({});
-	return categories.map(category => category.toJSON());
+	const tags = await Tag.find({});
+	return tags.map(tag => tag.toJSON());
+};
+
+const tagsInDb = async () => {
+	const tags = await Tag.find({});
+	return tags.map(tag => tag.toJSON());
 };
 
 module.exports = {
@@ -185,9 +201,11 @@ module.exports = {
 	loginViewer,
 	populateBlogsDb,
 	populateCategoriesDb,
+	populateTagsDb,
 	authorsInDb,
 	blogsInDb,
 	categoriesInDb,
+	tagsInDb,
 	commentsInDb,
 	viewersInDb,
 };

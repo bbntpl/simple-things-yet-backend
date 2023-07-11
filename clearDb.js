@@ -1,6 +1,6 @@
 const Author = require('./models/author');
 const Blog = require('./models/blog');
-const Category = require('./models/category');
+const Tag = require('./models/tag');
 const Comment = require('./models/comment');
 const Viewer = require('./models/viewer');
 
@@ -18,7 +18,7 @@ async function connectDB() {
 async function clearDb() {
 	await Blog.deleteMany({});
 	await Comment.deleteMany({});
-	await Category.deleteMany({});
+	await Tag.deleteMany({});
 	await Author.deleteMany({});
 	await Viewer.deleteMany({});
 }
