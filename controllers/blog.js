@@ -1,4 +1,5 @@
 const Blog = require('../models/blog');
+const Category = require('../models/category');
 const Tag = require('../models/tag');
 
 const insertBlogToTag = async (tagId, blogId) => {
@@ -93,29 +94,30 @@ exports.blogFetch = async (req, res, next) => {
 	}
 };
 
-const removeBlogIdsFromCategories = async (tags, blogToUpdateId) => {
-	for (const tagId of tags) {
-		const tag = await Tag.findById(tagId);
-		tag.blogs = tag.blogs.filter(
+const removeBlogRefs = async (docRefs, DocSchema, blogToUpdateId) => {
+	console.log(docRefs);
+	for (const otherDoc of docRefs) {
+		const doc = await DocSchema.findById(otherDoc.Id);
+		doc.blogs = doc.blogs.filter(
 			(blogId) => blogId.toString() !== blogToUpdateId.toString()
 		);
-		await tag.save();
+		await doc.save();
 	}
 };
 
-const blogTagUpdate = async (blogToUpdate, updatedData) => {
-	const oldCategories = blogToUpdate.tags;
-	const newCategories = updatedData.tags;
+const blogTagsUpdate = async (blogToUpdate, updatedData) => {
+	const oldTags = blogToUpdate.tags;
+	const newTags = updatedData.tags;
 	const hasTagUpdates =
-		JSON.stringify(oldCategories.sort()) !==
-		JSON.stringify(newCategories.sort());
+		JSON.stringify(oldTags.sort()) !==
+		JSON.stringify(newTags.sort());
 
 	if (hasTagUpdates) {
 		// Remove blog reference from old tags
-		await removeBlogIdsFromCategories(oldCategories, blogToUpdate._id);
+		await removeBlogRefs(oldTags, Tag, blogToUpdate._id);
 
 		// Add blog reference to new tags
-		for (const tagId of newCategories) {
+		for (const tagId of newTags) {
 			const tag = await Tag.findById(tagId);
 			tag.blogs.push(blogToUpdate._id);
 			await tag.save();
@@ -166,7 +168,8 @@ exports.blogUpdate = async (req, res, next) => {
 		author,
 		title,
 		content,
-		isPrivate
+		isPrivate,
+		category
 	} = req.body;
 	try {
 		const blogToUpdate = await Blog.findById(id);
@@ -185,13 +188,15 @@ exports.blogUpdate = async (req, res, next) => {
 			blogToUpdate.isPublished = true;
 			blogToUpdate.save();
 		}
-		await blogTagUpdate(blogToUpdate, req.body);
+		await blogTagsUpdate(blogToUpdate, req.body);
 		await blogLikesUpdate(blogToUpdate, req.body);
+		await removeBlogRefs(blogToUpdate.category, Category, req.body);
 
 		const propsToUpdate = {
 			title,
 			content,
 			isPrivate,
+			category,
 			author: author.id
 		};
 
@@ -214,7 +219,7 @@ exports.blogDelete = async (req, res, next) => {
 		const blog = await Blog.findById(id);
 
 		const deletedBlog = await blog.deleteOne({ _id: blog._id }).then((doc) => {
-			removeBlogIdsFromCategories(doc.tags, doc._id).then(() => {
+			removeBlogRefs(doc.tags, doc._id).then(() => {
 				console.log('blog is successfully deleted');
 			});
 		});

@@ -184,8 +184,8 @@ const viewersInDb = async () => {
 };
 
 const categoriesInDb = async () => {
-	const tags = await Tag.find({});
-	return tags.map(tag => tag.toJSON());
+	const categories = await Category.find({});
+	return categories.map(category => category.toJSON());
 };
 
 const tagsInDb = async () => {

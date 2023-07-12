@@ -20,6 +20,8 @@ exports.categoryCreate = async (req, res, next) => {
 		return res.status(400).json({ errors: errors.array() });
 	}
 
+
+
 	const { name, description } = req.body;
 	try {
 		const isCategoryExists = await Category.findOne({ name });
@@ -28,7 +30,16 @@ exports.categoryCreate = async (req, res, next) => {
 			return res.status(400).json({ error: `Category ${name} exists already` });
 		}
 
-		const newCategory = new Category({ name, description });
+		const category = {
+			name,
+			description,
+		};
+
+		if (req.file) {
+			category.imageId = req.file.id;
+		}
+
+		const newCategory = new Category(category);
 		await newCategory.save();
 
 		res.status(201).json(newCategory);

@@ -35,11 +35,11 @@ exports.sampleViewer2 = {
 
 // Sample data for categorie populate
 exports.sampleCategory1 = {
-	name: 'technology',
+	name: 'Technology',
 	description: 'This area is about technologies and AIs'
 };
 exports.sampleCategory2 = {
-	name: 'health',
+	name: 'Health',
 	description: 'This area is how to maintain healthiness'
 };
 

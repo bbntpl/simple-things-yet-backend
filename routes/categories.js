@@ -9,6 +9,7 @@ const {
 	validateCategory,
 } = require('../controllers/category');
 const Author = require('../models/author');
+const upload = require('../utils/upload');
 
 const router = express.Router();
 
@@ -19,7 +20,12 @@ router.get('/', categories);
 router.get('/:id', categoryFetch);
 
 // Create a new category
-router.post('/', authenticateUser(Author), validateCategory, categoryCreate);
+router.post('/',
+	authenticateUser(Author),
+	upload.single('categoryImage'),
+	validateCategory,
+	categoryCreate
+);
 
 // Update an existing category
 router.put('/:id', authenticateUser(Author), categoryUpdate);

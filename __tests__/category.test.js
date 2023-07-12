@@ -1,5 +1,6 @@
 const supertest = require('supertest');
 const mongoose = require('mongoose');
+const path = require('path');
 
 const { app, initApp } = require('../app');
 const Category = require('../models/category');
@@ -86,9 +87,36 @@ describe('creation of category', () => {
 		const categoriesAtEnd = await categoriesInDb();
 		expect(categoriesAtEnd).toHaveLength(3);
 		const categoryNames = categoriesAtEnd.map(c => c.name);
-		expect(categoryNames).toContain(newCategory.name.toLowerCase());
+		expect(categoryNames).toContain(newCategory.name);
 	});
 
+	test('should successfully create a category with an image', async () => {
+		const newCategory = {
+			name: 'New Category',
+			description: 'A new category for testing purposes',
+		};
+
+		// path to the image used for upload
+		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+
+		await request
+			.post('/api/categories')
+			.field('name', newCategory.name)
+			.field('description', newCategory.description)
+			.attach('categoryImage', filePath, 'image.jpg')
+			.set('Authorization', `Bearer ${token}`)
+			.expect(201);
+
+		const categoriesAtEnd = await categoriesInDb();
+		expect(categoriesAtEnd).toHaveLength(3);
+		const categoryNames = categoriesAtEnd.map(c => c.name);
+		expect(categoryNames).toContain(newCategory.name);
+
+		console.log(categoriesAtEnd);
+		// check if image is saved
+		expect(mongoose.Types.ObjectId.isValid(categoriesAtEnd[2].imageId)).toBeTruthy();
+
+	});
 	test('should fail to create a category if it already exists', async () => {
 		const duplicateCategory = {
 			name: sampleCategory1.name,
@@ -141,7 +169,7 @@ describe('deletion of category', () => {
 		const category = await Category.findById(categoriesAtStart[0].id);
 		const blog = await Blog.findOne({});
 
-		blog.categories.push(category._id);
+		blog.category = (category._id);
 		await blog.save();
 
 		category.blogs.push(blog._id);
