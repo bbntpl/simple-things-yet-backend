@@ -7,6 +7,7 @@ const {
 	categoryUpdate,
 	categoryDelete,
 	validateCategory,
+	categoryImageFetch,
 } = require('../controllers/category');
 const Author = require('../models/author');
 const upload = require('../utils/upload');
@@ -18,6 +19,9 @@ router.get('/', categories);
 
 // Fetch a specific category by ID
 router.get('/:id', categoryFetch);
+
+// Fetch category image
+router.get('/image/:id', categoryImageFetch);
 
 // Create a new category
 router.post('/',

@@ -1,3 +1,5 @@
+const _ = require('lodash');
+
 const Blog = require('../models/blog');
 const Category = require('../models/category');
 const Tag = require('../models/tag');
@@ -94,10 +96,9 @@ exports.blogFetch = async (req, res, next) => {
 	}
 };
 
-const removeBlogRefs = async (docRefs, DocSchema, blogToUpdateId) => {
-	console.log(docRefs);
-	for (const otherDoc of docRefs) {
-		const doc = await DocSchema.findById(otherDoc.Id);
+const removeBlogRefs = async (docsIds, DocSchema, blogToUpdateId) => {
+	for (const docId of docsIds) {
+		const doc = await DocSchema.findById(docId);
 		doc.blogs = doc.blogs.filter(
 			(blogId) => blogId.toString() !== blogToUpdateId.toString()
 		);
@@ -105,19 +106,38 @@ const removeBlogRefs = async (docRefs, DocSchema, blogToUpdateId) => {
 	}
 };
 
+const blogCategoryUpdate = async (blogToUpdate, updatedData) => {
+	const oldCategoryId = blogToUpdate.category;
+	const newCategoryId = updatedData.category;
+
+	if (oldCategoryId !== newCategoryId) {
+		// Remove blog reference from old tags
+		if (oldCategoryId) {
+			await removeBlogRefs([oldCategoryId], Category, blogToUpdate._id);
+		}
+
+		// Add blog reference to new tags
+		if (newCategoryId) {
+			const category = await Category.findById(newCategoryId);
+			category.blogs.push(blogToUpdate._id);
+			await category.save();
+		}
+	}
+};
+
 const blogTagsUpdate = async (blogToUpdate, updatedData) => {
-	const oldTags = blogToUpdate.tags;
-	const newTags = updatedData.tags;
+	const oldTagsIds = blogToUpdate.tags;
+	const newTagsIds = updatedData.tags;
 	const hasTagUpdates =
-		JSON.stringify(oldTags.sort()) !==
-		JSON.stringify(newTags.sort());
+		JSON.stringify(oldTagsIds.sort()) !==
+		JSON.stringify(newTagsIds.sort());
 
 	if (hasTagUpdates) {
 		// Remove blog reference from old tags
-		await removeBlogRefs(oldTags, Tag, blogToUpdate._id);
+		await removeBlogRefs(oldTagsIds, Tag, blogToUpdate._id);
 
 		// Add blog reference to new tags
-		for (const tagId of newTags) {
+		for (const tagId of newTagsIds) {
 			const tag = await Tag.findById(tagId);
 			tag.blogs.push(blogToUpdate._id);
 			await tag.save();
@@ -125,58 +145,28 @@ const blogTagsUpdate = async (blogToUpdate, updatedData) => {
 	}
 };
 
-const blogLikesUpdate = async (blogToUpdate, updatedData) => {
-	const oldLikes = blogToUpdate.likes;
-	const newLikes = updatedData.likes;
-
-	const oldLikesSet = new Set(oldLikes.map(String));
-	const newLikesSet = new Set(newLikes.map(String));
-
-	// If new likes is duplicated, disallow update
-	const hasLikesDuplicate = newLikesSet.size !== newLikes.length;
-
-	if (hasLikesDuplicate) return;
-
-	const hasNoLikesUpdate =
-		oldLikesSet.size === newLikesSet.size &&
-		[...oldLikesSet].every((id) => newLikesSet.has(id));
-
-	// No updates needed because the likes arrays are the same
-	if (hasNoLikesUpdate) return;
-
-	let updatedLikes;
-
-	if (oldLikesSet.size < newLikesSet.size) {
-		// A viewer id gests added on likes array
-		updatedLikes = [...oldLikesSet, ...newLikesSet].filter(
-			(id) => !oldLikesSet.has(id) || !newLikesSet.has(id)
-		);
-	} else {
-		// A viewer id gets removed on likes array
-		updatedLikes = oldLikes.filter((id) => newLikesSet.has(id.toString()));
-	}
-
-	const blog = await Blog.findByIdAndUpdate(blogToUpdate._id, {
-		likes: updatedLikes,
-	});
-	await blog.save();
-};
-
 exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
-	const {
-		author,
-		title,
-		content,
-		isPrivate,
-		category
-	} = req.body;
+
 	try {
 		const blogToUpdate = await Blog.findById(id);
+		const blogPropsToUpdate = {};
+
+		// Iterate over each field in the req body
+		// to isolate blog props that'll be updated	
+		for (const key in req.body) {
+			// eslint-disable-next-line no-prototype-builtins
+			if (req.body.hasOwnProperty(key)) {
+				if (!_.isEqual(blogToUpdate[key], req.body[key])) {
+					blogPropsToUpdate[key] = req.body[key];
+				}
+			}
+		}
 
 		if (!blogToUpdate) {
 			return res.status(404).json({ error: 'Blog not found' });
 		}
+
 		if (
 			blogToUpdate.author.toString() !== req.user._id.toString() &&
 			req.originalUrl.includes('authors-only')
@@ -185,24 +175,16 @@ exports.blogUpdate = async (req, res, next) => {
 		}
 
 		if (publishAction === 'publish') {
-			blogToUpdate.isPublished = true;
-			blogToUpdate.save();
+			await Blog.findByIdAndUpdate(blogToUpdate._id, { isPublished: true });
 		}
-		await blogTagsUpdate(blogToUpdate, req.body);
-		await blogLikesUpdate(blogToUpdate, req.body);
-		await removeBlogRefs(blogToUpdate.category, Category, req.body);
 
-		const propsToUpdate = {
-			title,
-			content,
-			isPrivate,
-			category,
-			author: author.id
-		};
+		// Update one to one ref for both blogs and tags/categories
+		await blogTagsUpdate(blogToUpdate, req.body);
+		await blogCategoryUpdate(blogToUpdate, req.body);
 
 		const updatedBlog = await Blog.findByIdAndUpdate(
 			id,
-			{ ...propsToUpdate },
+			{ ...blogPropsToUpdate },
 			{ new: true }
 		);
 

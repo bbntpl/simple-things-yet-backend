@@ -84,7 +84,7 @@ exports.viewerLogin = async (req, res, next) => {
 			id: viewer._id,
 		};
 
-		// token expires in 60 min
+		// Token expires in 60 min
 		const token = jwt.sign(
 			userForToken,
 			SECRET_KEY,

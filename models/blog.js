@@ -42,7 +42,8 @@ const blogSchema = new Schema({
 	],
 	category: {
 		type: Schema.Types.ObjectId,
-		ref: 'Category'
+		ref: 'Category',
+		default: null
 	},
 	tags: [
 		{

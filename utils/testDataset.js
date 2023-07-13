@@ -39,8 +39,8 @@ exports.sampleCategory1 = {
 	description: 'This area is about technologies and AIs'
 };
 exports.sampleCategory2 = {
-	name: 'Health',
-	description: 'This area is how to maintain healthiness'
+	name: 'Mental Health',
+	description: 'This area is about mental health maintenance'
 };
 
 // Sample data for categorie populate

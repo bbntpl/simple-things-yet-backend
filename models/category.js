@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 
@@ -8,6 +7,7 @@ const categorySchema = new Schema({
 	name: {
 		type: String,
 		required: true,
+		unique: true,
 	},
 	description: {
 		type: String,
@@ -15,7 +15,6 @@ const categorySchema = new Schema({
 	},
 	slug: {
 		type: String,
-		unique: true
 	},
 	imageId: {
 		type: Schema.Types.ObjectId,
@@ -31,8 +30,12 @@ const categorySchema = new Schema({
 	timestamps: true
 });
 
+categorySchema.set('autoIndex', false);
+
+// Allow name to be case insensitive
+categorySchema.index({ name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
+
 categorySchema.pre('save', function (next) {
-	// Only create slug if name is modified (or new)
 	if (this.isModified('name')) {
 		this.slug = slugify(this.name, { lower: true, strict: true });
 	}

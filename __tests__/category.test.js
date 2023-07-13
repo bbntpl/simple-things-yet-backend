@@ -69,6 +69,33 @@ describe('category fetch', () => {
 			description: sampleCategory1.description,
 		});
 	});
+
+	test.only('should successfully get category image', async () => {
+		const newCategory = new Category({
+			name: 'project models',
+			description: 'test purposes',
+		});
+
+		// path to the image used for upload
+		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+
+		const response = await request
+			.post('/api/categories')
+			.field('name', newCategory.name)
+			.field('description', newCategory.description)
+			.attach('categoryImage', filePath, 'image.jpg')
+			.set('Authorization', `Bearer ${token}`)
+			.expect(201);
+
+		expect(response.body.imageId).toBeDefined();
+
+		const category = await Category.findById(response.body.id);
+
+		await request
+			.get(`/api/categories/image/${category.imageId}`)
+			.expect('Content-Type', /image\/png/)
+			.expect(200);
+	});
 });
 
 describe('creation of category', () => {
@@ -112,7 +139,6 @@ describe('creation of category', () => {
 		const categoryNames = categoriesAtEnd.map(c => c.name);
 		expect(categoryNames).toContain(newCategory.name);
 
-		console.log(categoriesAtEnd);
 		// check if image is saved
 		expect(mongoose.Types.ObjectId.isValid(categoriesAtEnd[2].imageId)).toBeTruthy();
 

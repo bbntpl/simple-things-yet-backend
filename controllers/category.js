@@ -1,5 +1,17 @@
 const { body, validationResult } = require('express-validator');
+const mongoose = require('mongoose');
+
 const Category = require('../models/category');
+
+let gfs;
+
+// Establish GridFsBucket connection
+const conn = mongoose.connection;
+conn.once('open', () => {
+	gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+		bucketName: 'uploads'
+	});
+});
 
 const validateCategory = [
 	body('name')
@@ -14,20 +26,48 @@ exports.validateCategory = [
 	...validateCategory
 ];
 
+exports.categoryImageFetch = async (req, res) => {
+	const { id } = req.params;
+	await gfs
+		.find({ _id: id })
+		.toArray((err, files) => {
+			if (err) {
+				return res.json(err);
+			}
+
+			if (!files || files.length === 0) {
+				return res.status(404).json({ error: 'No file exists' });
+			}
+
+			// Make sure it is image
+			if (files[0].contentType === 'image/jpeg' || files[0].contentType === 'image/png') {
+				const mime = files[0].contentType;
+				res.set('Content-Type', mime);
+
+				// Read output to browser
+				const readstream = gfs.openDownloadStream(id);
+				readstream.pipe(res);
+			} else {
+				// Otherwise, indicate that it is not an image
+				res.status(404).json({
+					error: 'Not an image'
+				});
+			}
+		});
+};
+
 exports.categoryCreate = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
 		return res.status(400).json({ errors: errors.array() });
 	}
 
-
-
 	const { name, description } = req.body;
 	try {
 		const isCategoryExists = await Category.findOne({ name });
 
-		if (isCategoryExists) {
-			return res.status(400).json({ error: `Category ${name} exists already` });
+		if (isCategoryExists && String(isCategoryExists._id) !== String(req.params.id)) {
+			return res.status(400).json({ error: `Category ${req.body.name} exists already` });
 		}
 
 		const category = {
@@ -84,7 +124,9 @@ exports.categoryUpdate = async (req, res, next) => {
 
 		const categoryToUpdate = await Category.findByIdAndUpdate(
 			id,
-			updatedCategory,
+			{
+				...updatedCategory,
+			},
 			{ new: true }
 		);
 

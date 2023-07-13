@@ -16,11 +16,13 @@ const {
 	sampleBlog2,
 	sampleBlog1,
 	sampleTag1,
-	sampleViewer1
+	sampleViewer1,
+	sampleCategory2
 } = require('../utils/testDataset');
 const Tag = require('../models/tag');
 const Blog = require('../models/blog');
 const Viewer = require('../models/viewer');
+const Category = require('../models/category');
 
 let server;
 let token;
@@ -221,6 +223,9 @@ describe('deletion of blog', () => {
 
 describe('update of blog', () => {
 	beforeEach(async () => {
+		await Category.deleteMany({});
+		await Tag.deleteMany({});
+
 		await deleteDbsForBlogTests();
 		await populateBlogsDb();
 
@@ -283,7 +288,6 @@ describe('update of blog', () => {
 		await request
 			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send({
-				...blogToUpdate,
 				tags: [
 					...blogToUpdate.tags,
 					tag._id
@@ -300,10 +304,33 @@ describe('update of blog', () => {
 		expect(updatedTag.blogs).toHaveLength(1);
 		expect(updatedTag.blogs.map(String)).toContain(blogsAtEnd[0].id.toString());
 
-		await Tag.deleteMany({});
 	});
 
-	test('should remove blog reference within tag after uncategorization', async () => {
+	test('should successfully add category to blog', async () => {
+		const blogsAtStart = await blogsInDb();
+		const blogToUpdate = blogsAtStart[0];
+
+		const category = new Category(sampleCategory2);
+		await category.save();
+
+		// Update the blog to update the category id in the blog
+		await request
+			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
+			.send({
+				...blogToUpdate,
+				category: category._id
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		const blogsAtEnd = await blogsInDb();
+		const updatedCategory = await Category.findById(category._id);
+
+		expect(blogsAtEnd[0].category.toString()).toEqual(category._id.toString());
+		expect(updatedCategory.blogs.map(String)).toContain(blogsAtEnd[0].id.toString());
+	});
+
+	test('should remove blog reference within tag after untagging', async () => {
 		const blogToUpdate = await Blog.findOne({});
 		const tag = new Tag(sampleTag1);
 
@@ -331,8 +358,6 @@ describe('update of blog', () => {
 		// Verify that the blog reference is removed from the tag
 		expect(updatedTag.blogs).toHaveLength(0);
 		expect(updatedTag.blogs).not.toContain(blogToUpdate._id);
-
-		await Tag.deleteMany({});
 	});
 
 	test('should verify that the blog is not private', async () => {

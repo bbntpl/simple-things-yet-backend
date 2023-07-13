@@ -6,7 +6,8 @@ const tagSchema = new Schema({
 	name: {
 		type: String,
 		required: true,
-		lowercase: true
+		lowercase: true,
+		unique: true
 	},
 	blogs: [
 		{
