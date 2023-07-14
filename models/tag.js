@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { default: slugify } = require('slugify');
 
 const { Schema } = mongoose;
 
@@ -9,6 +10,9 @@ const tagSchema = new Schema({
 		lowercase: true,
 		unique: true
 	},
+	slug: {
+		type: String,
+	},
 	blogs: [
 		{
 			type: Schema.Types.ObjectId,
@@ -17,6 +21,13 @@ const tagSchema = new Schema({
 	]
 }, {
 	timestamps: true
+});
+
+tagSchema.pre('save', function (next) {
+	if (this.isModified('name')) {
+		this.slug = slugify(this.name, { lower: true, strict: true });
+	}
+	next();
 });
 
 // Transform output after converting it to JSON

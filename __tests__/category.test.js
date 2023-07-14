@@ -13,6 +13,7 @@ const {
 	loginAuthor
 } = require('../utils/testHelpers');
 const { sampleAuthor1, sampleCategory1, sampleCategory2 } = require('../utils/testDataset');
+const { clearUploads } = require('../utils/clearUploads');
 
 let token;
 let server;
@@ -26,6 +27,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await Category.deleteMany({});
 	await deleteDbsForBlogTests();
+	await clearUploads(mongoose.connection);
 
 	// populate test database
 	await populateCategoriesDb();

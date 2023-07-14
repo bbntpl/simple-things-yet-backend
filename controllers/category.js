@@ -2,16 +2,7 @@ const { body, validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 
 const Category = require('../models/category');
-
-let gfs;
-
-// Establish GridFsBucket connection
-const conn = mongoose.connection;
-conn.once('open', () => {
-	gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-		bucketName: 'uploads'
-	});
-});
+const getGfs = require('../utils/gfs');
 
 const validateCategory = [
 	body('name')
@@ -26,34 +17,43 @@ exports.validateCategory = [
 	...validateCategory
 ];
 
-exports.categoryImageFetch = async (req, res) => {
+exports.categoryImageFetch = async (req, res, next) => {
 	const { id } = req.params;
-	await gfs
-		.find({ _id: id })
-		.toArray((err, files) => {
-			if (err) {
-				return res.json(err);
-			}
+	try {
+		const gfs = await getGfs();
+		console.log(gfs);
+		const objectId = new mongoose.Types.ObjectId(id);
+		const files = await gfs.find({ _id: objectId }).toArray();
+		console.log(files);
+		// gfs
+		// 	.find({ _id: id })
+		// 	.toArray((err, files) => {
+		// 		if (err) {
+		// 			return res.json(err);
+		// 		}
 
-			if (!files || files.length === 0) {
-				return res.status(404).json({ error: 'No file exists' });
-			}
+		// 		if (!files || files.length === 0) {
+		// 			return res.status(404).json({ error: 'No file exists' });
+		// 		}
 
-			// Make sure it is image
-			if (files[0].contentType === 'image/jpeg' || files[0].contentType === 'image/png') {
-				const mime = files[0].contentType;
-				res.set('Content-Type', mime);
+		// 		// Make sure it is image
+		// 		if (files[0].contentType === 'image/jpeg' || files[0].contentType === 'image/png') {
+		// 			const mime = files[0].contentType;
+		// 			res.set('Content-Type', mime);
 
-				// Read output to browser
-				const readstream = gfs.openDownloadStream(id);
-				readstream.pipe(res);
-			} else {
-				// Otherwise, indicate that it is not an image
-				res.status(404).json({
-					error: 'Not an image'
-				});
-			}
-		});
+		// 			// Read output to browser
+		// 			const readstream = gfs.openDownloadStream(id);
+		// 			readstream.pipe(res);
+		// 		} else {
+		// 			// Otherwise, indicate that it is not an image
+		// 			res.status(404).json({
+		// 				error: 'Not an image'
+		// 			});
+		// 		}
+		// 	});
+	} catch (err) {
+		next(err);
+	}
 };
 
 exports.categoryCreate = async (req, res, next) => {
