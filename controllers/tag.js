@@ -1,5 +1,6 @@
 const { body, validationResult } = require('express-validator');
 const Tag = require('../models/tag');
+const { default: slugify } = require('slugify');
 
 const validateTag = [
 	body('name')
@@ -20,7 +21,7 @@ exports.tagCreate = async (req, res, next) => {
 		return res.status(400).json({ errors: errors.array() });
 	}
 
-	const { name, description } = req.body;
+	const { name } = req.body;
 	try {
 		const isTagExists = await Tag.findOne({ name });
 
@@ -28,7 +29,7 @@ exports.tagCreate = async (req, res, next) => {
 			return res.status(400).json({ error: `Tag ${name} exists already` });
 		}
 
-		const newTag = new Tag({ name, description });
+		const newTag = new Tag({ name });
 		await newTag.save();
 
 		res.status(201).json(newTag);
@@ -67,8 +68,8 @@ exports.tagUpdate = async (req, res, next) => {
 	try {
 		const updatedTag = {
 			name: req.body.name,
-			description: req.body.description,
-			blogs: req.body.blogs
+			blogs: req.body.blogs,
+			slug: slugify(req.body.name, { lower: true, strict: true })
 		};
 
 		const tagToUpdate = await Tag.findByIdAndUpdate(

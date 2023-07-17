@@ -85,18 +85,18 @@ describe('category fetch', () => {
 			.post('/api/categories')
 			.field('name', newCategory.name)
 			.field('description', newCategory.description)
-			.attach('categoryImage', filePath, 'image.jpg')
+			.attach('categoryImage', filePath, 'image.png')
 			.set('Authorization', `Bearer ${token}`)
 			.expect(201);
 
 		expect(response.body.imageId).toBeDefined();
 
 		const category = await Category.findById(response.body.id);
-
-		await request
+		const gfsResponse = await request
 			.get(`/api/categories/image/${category.imageId}`)
-			.expect('Content-Type', /image\/png/)
 			.expect(200);
+
+		expect(gfsResponse.headers['content-type']).toEqual('image/png');
 	});
 });
 

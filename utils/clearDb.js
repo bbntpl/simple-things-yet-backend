@@ -16,6 +16,7 @@ async function connectDB() {
 	}
 }
 
+// Delete the collections from the database for development
 async function clearDb() {
 	await Blog.deleteMany({});
 	await Comment.deleteMany({});

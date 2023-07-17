@@ -71,7 +71,6 @@ describe('creation of tag', () => {
 	test('should successfully create a tag', async () => {
 		const newTag = {
 			name: 'New Tag',
-			description: 'A new tag for testing purposes',
 		};
 
 		await request
@@ -89,7 +88,6 @@ describe('creation of tag', () => {
 	test('should fail to create a tag if it already exists', async () => {
 		const duplicateTag = {
 			name: sampleTag1.name,
-			description: 'A duplicate tag for testing purposes',
 		};
 
 		await request

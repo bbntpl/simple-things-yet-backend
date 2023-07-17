@@ -5,21 +5,24 @@ let gfs;
 function getGfs() {
 	return new Promise((resolve, reject) => {
 		if (gfs) {
+			// immediately resolve existing gfs
 			resolve(gfs);
 		} else {
 			// Establish GridFsBucket connection
 			const conn = mongoose.connection;
-			conn.once('open', () => {
+			if (conn.readyState === 1) {
+				console.log('Connection already open, creating new gfs');
 				gfs = new mongoose.mongo.GridFSBucket(conn.db, {
-					bucketName: 'fs'
+					bucketName: 'uploads'
 				});
 				resolve(gfs);
-			});
-			conn.on('error', (err) => {
-				reject(err);
-			});
+			} else {
+				console.log('Connection not open');
+				reject(new Error('MongoDB connection not open'));
+			}
 		}
 	});
 }
+
 
 module.exports = getGfs;

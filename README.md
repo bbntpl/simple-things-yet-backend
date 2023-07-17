@@ -8,3 +8,14 @@ This document provides an overview of the backend of the application and offers 
 For a visual representation, refer to the database diagram:
 
 ![DB Blog Model Diagram](./images/dbdiagram.png)
+
+## Environmental variables template
+
+```
+MONGODB_URI=
+DEV_MONGODB_URI=
+TEST_MONGODB_URI=
+SECRET_KEY=<any string>
+NODE_ENV=<development, production or test>
+PORT=<port number>
+```
