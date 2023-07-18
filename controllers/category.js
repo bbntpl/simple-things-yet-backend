@@ -47,7 +47,6 @@ exports.categoryImageFetch = async (req, res, next) => {
 		console.log('Error', err);
 		next(err);
 	}
-
 };
 
 exports.categoryCreate = async (req, res, next) => {

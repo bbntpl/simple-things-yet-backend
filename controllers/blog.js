@@ -17,7 +17,7 @@ const insertBlogToTag = async (tagId, blogId) => {
 };
 
 exports.blogCreate = async (req, res, next) => {
-	const { title, content, isPrivate, tags } = req.body;
+	const { title, content, isPrivate, tags, category } = req.body;
 	try {
 		if (!title || !content) {
 			return res
@@ -35,6 +35,7 @@ exports.blogCreate = async (req, res, next) => {
 		blog = new Blog({
 			title,
 			content,
+			category,
 			author: req.user._id,
 			tags: tags || [],
 			isPrivate: isPrivate,
