@@ -23,7 +23,6 @@ exports.categoryImageFetch = async (req, res, next) => {
 		const objectId = new mongoose.Types.ObjectId(id);
 		const gfs = await getGfs();
 		const files = await gfs.find({ _id: objectId }).toArray();
-		console.log('files', files);
 
 		if (!files || files.length === 0) {
 			return res.status(404).json({ error: 'No file exists' });
