@@ -71,8 +71,7 @@ describe('category fetch', () => {
 			description: sampleCategory1.description,
 		});
 	});
-
-	test.only('should successfully get category image', async () => {
+	test('should successfully get category image', async () => {
 		const newCategory = new Category({
 			name: 'project models',
 			description: 'test purposes',

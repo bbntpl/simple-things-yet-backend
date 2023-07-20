@@ -47,6 +47,17 @@ exports.blogCreate = async (req, res, next) => {
 
 		const savedBlog = await blog.save();
 
+		if (category) {
+			const insertBlogRefToCategory = async () => {
+				const fetchedCategory = await Category.findById(category);
+
+				fetchedCategory.blogs.push(blog._id);
+				await fetchedCategory.save();
+			};
+
+			insertBlogRefToCategory();
+		}
+
 		if (tags) {
 			const insertBlogToTagPromises = tags.map((tag) =>
 				insertBlogToTag(tag, blog._id)
@@ -185,7 +196,7 @@ exports.blogUpdate = async (req, res, next) => {
 
 		const updatedBlog = await Blog.findByIdAndUpdate(
 			id,
-			{ ...blogPropsToUpdate },
+			{ ...blogPropsToUpdate, author: blogPropsToUpdate.author.id }, // make sure it is id not the entire object
 			{ new: true }
 		);
 
