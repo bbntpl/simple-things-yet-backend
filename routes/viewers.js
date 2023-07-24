@@ -6,6 +6,7 @@ const {
 	viewerFetch,
 	viewerDelete,
 	viewerUpdate,
+	viewerPasswordConfirm,
 	viewerPasswordChange,
 	validateViewerLogin,
 	validateViewerRegistration
@@ -24,6 +25,9 @@ router.post('/register', validateViewerRegistration, viewerRegister);
 
 // Login as an existing user/viewer
 router.post('/login', validateViewerLogin, viewerLogin);
+
+// Password ocnfirmation which return a boolean
+router.post('/:id/confirm-password', authenticateUser(Viewer), viewerPasswordConfirm);
 
 // Delete the account of user/viwer
 router.delete('/:id/delete', authenticateUser(Viewer), viewerDelete);

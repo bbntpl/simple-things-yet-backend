@@ -69,7 +69,7 @@ app.use('/api/author', authorRouter);
 app.use('/api/blogs', blogsRouter);
 app.use('/api/tags', tagsRouter);
 app.use('/api/comments', commentsRouter);
-app.use('/api/viewer', viewersRouter);
+app.use('/api/viewers', viewersRouter);
 app.use('/api/categories', categoriesRouter);
 
 // Setup error handlers as middleware

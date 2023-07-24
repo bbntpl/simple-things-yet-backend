@@ -150,6 +150,22 @@ exports.viewerUpdate = async (req, res, next) => {
 	}
 };
 
+exports.viewerPasswordConfirm = async (req, res, next) => {
+	const { passwordInput } = req.body;
+
+	try {
+		const viewer = await Viewer.findById(req.params.id);
+		if (!viewer) {
+			return res.status(404).json({ message: 'Viewer not found' });
+		}
+
+		const passwordCorrect = await bcrypt.compare(passwordInput, viewer.passwordHash);
+		res.status(200).json({ result: !!passwordCorrect });
+	} catch (err) {
+		next(err);
+	}
+};
+
 exports.viewerPasswordChange = async (req, res, next) => {
 	const { currentPassword, newPassword, confirmPassword } = req.body;
 
@@ -177,17 +193,10 @@ exports.viewerPasswordChange = async (req, res, next) => {
 };
 
 exports.viewerDelete = async (req, res, next) => {
-	const { password } = req.body;
-
 	try {
 		const viewer = await Viewer.findById(req.params.id);
 		if (!viewer) {
 			return res.status(404).json({ error: 'Viewer not found' });
-		}
-
-		const passwordCorrect = await bcrypt.compare(password, viewer.passwordHash);
-		if (!passwordCorrect) {
-			return res.status(400).json({ error: 'Incorrect password' });
 		}
 
 		const deletedViewer = await Viewer.deleteOne({ _id: req.params.id });

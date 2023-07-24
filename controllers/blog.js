@@ -163,7 +163,7 @@ exports.blogUpdate = async (req, res, next) => {
 	try {
 		const blogToUpdate = await Blog.findById(id);
 		const blogPropsToUpdate = {};
-
+		console.log(blogPropsToUpdate);
 		// Iterate over each field in the req body
 		// to isolate blog props that'll be updated	
 		for (const key in req.body) {
@@ -191,12 +191,21 @@ exports.blogUpdate = async (req, res, next) => {
 		}
 
 		// Update one to one ref for both blogs and tags/categories
-		await blogTagsUpdate(blogToUpdate, req.body);
-		await blogCategoryUpdate(blogToUpdate, req.body);
+		if (req.originalUrl.includes('authors-only')) {
+			await blogTagsUpdate(blogToUpdate, req.body);
+			await blogCategoryUpdate(blogToUpdate, req.body);
+		}
+
+		const authorId = blogPropsToUpdate['author']
+			? blogPropsToUpdate.author.id
+			: req.body.author.id;
 
 		const updatedBlog = await Blog.findByIdAndUpdate(
 			id,
-			{ ...blogPropsToUpdate, author: blogPropsToUpdate.author.id }, // make sure it is id not the entire object
+			{
+				...blogPropsToUpdate,
+				author: authorId
+			}, // make sure it is id not the entire object
 			{ new: true }
 		);
 

@@ -155,7 +155,7 @@ const loginAuthor = async (api, author) => {
 
 const loginViewer = async (api, viewer) => {
 	const response = await api
-		.post('/api/viewer/login')
+		.post('/api/viewers/login')
 		.send({
 			username: viewer.username,
 			password: viewer.password

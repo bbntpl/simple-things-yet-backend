@@ -288,6 +288,7 @@ describe('update of blog', () => {
 		await request
 			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
 			.send({
+				...blogToUpdate,
 				tags: [
 					...blogToUpdate.tags,
 					tag._id

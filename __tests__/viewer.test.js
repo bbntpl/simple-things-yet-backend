@@ -33,7 +33,7 @@ describe('fetch viewer object', () => {
 		const viewers = await viewersInDb();
 
 		const response = await request.
-			get('/api/viewer/all')
+			get('/api/viewers/all')
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
 
@@ -43,7 +43,7 @@ describe('fetch viewer object', () => {
 	test('should successfully fetch a specific viewer', async () => {
 		const viewers = await viewersInDb();
 		const response = await request.
-			get(`/api/viewer/${viewers[0].id}`)
+			get(`/api/viewers/${viewers[0].id}`)
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
 
@@ -55,7 +55,7 @@ describe('fetch viewer object', () => {
 	test('should successfully fetch a specific viewer excluding passwordHash', async () => {
 		const viewers = await viewersInDb();
 		const response = await request.
-			get(`/api/viewer/${viewers[0].id}`)
+			get(`/api/viewers/${viewers[0].id}`)
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
 
@@ -65,7 +65,7 @@ describe('fetch viewer object', () => {
 	test('should fail to fetch a non existing viewer', async () => {
 		const nonExistentId = new mongoose.Types.ObjectId();
 		const response = await request.
-			get(`/api/viewer/${nonExistentId}`)
+			get(`/api/viewers/${nonExistentId}`)
 			.expect('Content-Type', /application\/json/)
 			.expect(404);
 
@@ -80,7 +80,7 @@ describe('registration of viewer', () => {
 		await createInitialViewer();
 	});
 	test('should succesfully register a user/viewer', async () => {
-		const response = await request.post('/api/viewer/register')
+		const response = await request.post('/api/viewers/register')
 			.send(sampleViewer2)
 			.expect('Content-Type', /application\/json/)
 			.expect(201);
@@ -96,7 +96,7 @@ describe('registration of viewer', () => {
 			username: 'username123'
 		};
 
-		const response = await request.post('/api/viewer/register')
+		const response = await request.post('/api/viewers/register')
 			.send(incompleteViewer)
 			.expect('Content-Type', /application\/json/)
 			.expect(400);
@@ -107,7 +107,7 @@ describe('registration of viewer', () => {
 		expect(msgs).toContain('Password is required');
 	});
 	test('should fail to register if username is taken', async () => {
-		const response = await request.post('/api/viewer/register')
+		const response = await request.post('/api/viewers/register')
 			.send(sampleViewer1)
 			.expect('Content-Type', /application\/json/)
 			.expect(400);
@@ -123,7 +123,7 @@ describe('login viewer', () => {
 		await createInitialViewer();
 	});
 	test('should succesfully login as a viewer', async () => {
-		const response = await request.post('/api/viewer/login')
+		const response = await request.post('/api/viewers/login')
 			.send({
 				username: sampleViewer1.username,
 				password: sampleViewer1.password
@@ -135,7 +135,7 @@ describe('login viewer', () => {
 		expect(newViewerAccount.token).not.toBeNull();
 	});
 	test('should fail to login with invalid username', async () => {
-		const response = await request.post('/api/viewer/login')
+		const response = await request.post('/api/viewers/login')
 			.send({
 				username: 'randomusername123456',
 				password: sampleViewer1.password
@@ -147,7 +147,7 @@ describe('login viewer', () => {
 		expect(error).toEqual('Invalid username');
 	});
 	test('should fail to login with invalid password', async () => {
-		const response = await request.post('/api/viewer/login')
+		const response = await request.post('/api/viewers/login')
 			.send({
 				username: sampleViewer1.username,
 				password: 'password123123123'
@@ -170,26 +170,33 @@ describe('deletion of viewer account', () => {
 	});
 	test('should successfully delete a viewer account', async () => {
 		const viewer = await Viewer.findOne({});
-		await request.delete(`/api/viewer/${viewer._id}/delete`)
-			.send({ password: sampleViewer1.password })
+
+		const pwdConfirmationResponse = await request.post(
+			`/api/viewers/${viewer._id}/confirm-password`)
+			.send({ passwordInput: sampleViewer1.password })
+			.set('Authorization', `Bearer ${token}`)
+			.expect('Content-Type', /application\/json/)
+			.expect(200);
+
+		expect(pwdConfirmationResponse.body.result).toBeTruthy();
+
+		await request.delete(`/api/viewers/${viewer._id}/delete`)
 			.set('Authorization', `Bearer ${token}`)
 			.expect(204);
 
 		const updatedViewers = await viewersInDb();
 		expect(updatedViewers).toHaveLength(0);
 	});
+
 	test('should fail to delete a viewer account if password input is wrong', async () => {
 		const viewer = await Viewer.findOne({});
-		const response = await request.delete(`/api/viewer/${viewer._id}/delete`)
-			.send({ password: 'Iknowthepasswordherhehehe' })
+		const response = await request.post(`/api/viewers/${viewer._id}/confirm-password`)
+			.send({ passwordInput: 'Iknowthepasswordherhehehe' })
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
-			.expect(400);
+			.expect(200);
 
-		const error = response.body.error;
-		const updatedViewers = await viewersInDb();
-		expect(updatedViewers).toHaveLength(1);
-		expect(error).toEqual('Incorrect password');
+		expect(response.body.result).toBeFalsy();
 	});
 });
 
@@ -211,7 +218,7 @@ describe('update of viewer', () => {
 			passwordHash: viewer.passwordHash
 		};
 
-		await request.put(`/api/viewer/${viewer._id}/update`)
+		await request.put(`/api/viewers/${viewer._id}/update`)
 			.send(updatedViewer)
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
@@ -232,7 +239,7 @@ describe('update of viewer', () => {
 			passwordHash
 		};
 
-		const response = await request.put(`/api/viewer/${nonExistentId}/update`)
+		const response = await request.put(`/api/viewers/${nonExistentId}/update`)
 			.send(updatedViewer)
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
@@ -260,7 +267,7 @@ describe('password changes in viewer doc', () => {
 			confirmPassword: 'qwerty123'
 		};
 
-		await request.put(`/api/viewer/${viewer._id}/change-password`)
+		await request.put(`/api/viewers/${viewer._id}/change-password`)
 			.send(viewerPwdToUpdate)
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
@@ -282,7 +289,7 @@ describe('password changes in viewer doc', () => {
 			confirmPassword: 'qwerty123'
 		};
 
-		const response = await request.put(`/api/viewer/${viewer._id}/change-password`)
+		const response = await request.put(`/api/viewers/${viewer._id}/change-password`)
 			.send(updatedViewer)
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
@@ -300,7 +307,7 @@ describe('password changes in viewer doc', () => {
 			confirmPassword: 'qwerty456'
 		};
 
-		const response = await request.put(`/api/viewer/${viewer._id}/change-password`)
+		const response = await request.put(`/api/viewers/${viewer._id}/change-password`)
 			.send(updatedViewer)
 			.set('Authorization', `Bearer ${token}`)
 			.expect('Content-Type', /application\/json/)
