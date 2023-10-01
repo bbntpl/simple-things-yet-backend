@@ -1,6 +1,7 @@
 const supertest = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const path = require('path');
 
 const { app, initApp } = require('../app');
 const { MONGODB_URI } = require('../utils/config');
@@ -65,6 +66,27 @@ describe('View author', () => {
 			.expect(200);
 
 		expect(response.body.passwordHash).not.toBeDefined();
+	});
+
+	test('should successfully get picture of author', async () => {
+		// login the author
+		const token = await loginAuthor(request, sampleAuthor1);
+
+		// path to the image used for upload
+		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+
+		const updatedAuthorResponse = await request
+			.put('/api/author/update/image')
+			.attach('authorImage', filePath, { filename: 'image.png' })
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+		expect(updatedAuthorResponse.body.imageId).toBeDefined();
+
+		const author = await Author.findById(updatedAuthorResponse.body.id);
+		const gfsResponse = await request
+			.get(`/api/author/${author.imageId}/image`)
+			.expect(200);
+		expect(gfsResponse.headers['content-type']).toEqual('image/png');
 	});
 });
 
@@ -145,6 +167,11 @@ describe('Login of author', () => {
 
 describe('Update of author', () => {
 	let token;
+	const newAuthorInfo = {
+		name: 'B.B. Antipolo',
+		bio: 'Lifelong learner forever',
+		email: 'admin@gmail.com'
+	};
 
 	beforeEach(async () => {
 		await Author.deleteMany({});
@@ -153,13 +180,7 @@ describe('Update of author', () => {
 		token = await loginAuthor(request, sampleAuthor1);
 	});
 
-	test('should successfuly change name, bio and email', async () => {
-		const newAuthorInfo = {
-			name: 'B.B. Antipolo',
-			bio: 'Lifelong learner forever',
-			email: 'admin@gmail.com'
-		};
-
+	test('should successfully change name, bio and email', async () => {
 		const response = await request
 			.put('/api/author/update')
 			.send(newAuthorInfo)
@@ -170,6 +191,24 @@ describe('Update of author', () => {
 		expect(response.body.name).toEqual(newAuthorInfo.name);
 		expect(response.body.bio).toEqual(newAuthorInfo.bio);
 		expect(response.body.email).toEqual(newAuthorInfo.email);
+	});
+
+	test('should successfully update picture of author', async () => {
+		const authorResponse = await request
+			.get('/api/author')
+			.expect('Content-Type', /application\/json/)
+			.expect(200);
+
+		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+
+		const updatedAuthorImageResponse = await request
+			.put('/api/author/update/image')
+			.attach('authorImage', filePath, { filename: 'image.png' })
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		expect(updatedAuthorImageResponse.body.imageId).toBeDefined();
+		expect(updatedAuthorImageResponse.body.imageId).not.toEqual(authorResponse.body.imageId);
 	});
 });
 

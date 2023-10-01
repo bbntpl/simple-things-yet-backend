@@ -27,6 +27,24 @@ exports.validateAuthor = [
 		.withMessage('Password must be at least 8 characters'),
 ];
 
+exports.authorImageUpdate = async (req, res, next) => {
+	try {
+		const author = req.user;
+		if (req.file && req.file.id) {
+			const updatedAuthor = await Author.findByIdAndUpdate(
+				author.id,
+				{ imageId: req.file.id },
+				{ new: true }
+			);
+			res.status(200).json(updatedAuthor);
+		} else {
+			return res.status(400).json({ message: 'Uploaded author picture not found' });
+		}
+	} catch (err) {
+		next(err);
+	}
+};
+
 exports.authorUpdate = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
@@ -35,13 +53,26 @@ exports.authorUpdate = async (req, res, next) => {
 		});
 	}
 
-	const { name, bio, email } = req.body;
+	const updateData = {};
+
+	if (req.body && req.body.name) {
+		updateData.name = req.body.name;
+	}
+	if (req.body && req.body.email) {
+		updateData.email = req.body.email;
+	}
+	if (req.body && req.body.bio) {
+		updateData.bio = req.body.bio;
+	}
+	if (req.file) {
+		updateData.imageId = req.file.id;
+	}
+
 	try {
 		const author = req.user;
-
 		const updatedAuthor = await Author.findByIdAndUpdate(
 			author.id,
-			{ name, bio, email },
+			updateData,
 			{ new: true }
 		);
 
@@ -58,7 +89,6 @@ exports.authorUpdate = async (req, res, next) => {
 exports.authorFetch = async (req, res, next) => {
 	try {
 		const author = await Author.findOne({});
-
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });
 		}

@@ -15,6 +15,10 @@ const authorSchema = new Schema({
 		required: true,
 		default: 'Write something here'
 	},
+	imageId: {
+		type: Schema.Types.ObjectId,
+		required: false
+	},
 	email: {
 		type: String,
 		required: true,

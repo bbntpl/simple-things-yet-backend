@@ -18,7 +18,7 @@ const categorySchema = new Schema({
 	},
 	imageId: {
 		type: Schema.Types.ObjectId,
-		required: false
+		required: true
 	},
 	blogs: [
 		{

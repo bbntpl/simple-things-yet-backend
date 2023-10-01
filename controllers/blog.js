@@ -3,6 +3,7 @@ const _ = require('lodash');
 const Blog = require('../models/blog');
 const Category = require('../models/category');
 const Tag = require('../models/tag');
+const { handlePagination, handleFiltering, handleSorting } = require('../utils/queryHandlers');
 
 const insertBlogToTag = async (tagId, blogId) => {
 	try {
@@ -20,9 +21,13 @@ exports.blogCreate = async (req, res, next) => {
 	const { title, content, isPrivate, tags, category } = req.body;
 	try {
 		if (!title || !content) {
-			return res
-				.status(400)
+			return res.status(400)
 				.json({ error: 'The blog must have title and content' });
+		}
+
+		if (!req.file) {
+			return res.status(400)
+				.json({ error: 'The blog must have preview image' });
 		}
 
 		let blog;
@@ -40,6 +45,10 @@ exports.blogCreate = async (req, res, next) => {
 			tags: tags || [],
 			isPrivate: isPrivate,
 		});
+
+		if (req.file) {
+			blog.imageId = req.file.id;
+		}
 
 		if (publishAction === 'publish') {
 			blog.isPublished = true;
@@ -73,7 +82,18 @@ exports.blogCreate = async (req, res, next) => {
 
 exports.blogs = async (req, res, next) => {
 	try {
-		const blogs = await Blog.find({});
+		const pagination = handlePagination(req);
+		const filters = handleFiltering(req, ['category']);
+		const sorts = handleSorting(req, {
+			oldest: { date: 1 },
+			latest: { date: -1 }
+		});
+
+		const blogs = await Blog.find(filters)
+			.skip(pagination.skip)
+			.limit(pagination.limit)
+			.sort(sorts);
+
 		res.json(blogs);
 	} catch (err) {
 		next(err);
@@ -157,13 +177,33 @@ const blogTagsUpdate = async (blogToUpdate, updatedData) => {
 	}
 };
 
+exports.blogImageUpdate = async (req, res, next) => {
+	const { id } = req.params;
+	try {
+		const blogToUpdate = await Blog.findById(id);
+		if (!blogToUpdate) {
+			return res.status(404).json({ error: 'Blog not found' });
+		}
+
+		if (req.file && req.file.id) {
+			blogToUpdate.imageId = req.file.id;
+			await blogToUpdate.save();
+			res.status(200).json(blogToUpdate);
+		} else {
+			return res.status(400).json({ message: 'Uploaded blog picture not found' });
+		}
+	} catch (err) {
+		next(err);
+	}
+};
+
 exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
 
 	try {
 		const blogToUpdate = await Blog.findById(id);
 		const blogPropsToUpdate = {};
-		console.log(blogPropsToUpdate);
+
 		// Iterate over each field in the req body
 		// to isolate blog props that'll be updated	
 		for (const key in req.body) {
@@ -205,7 +245,7 @@ exports.blogUpdate = async (req, res, next) => {
 			{
 				...blogPropsToUpdate,
 				author: authorId
-			}, // make sure it is id not the entire object
+			},
 			{ new: true }
 		);
 

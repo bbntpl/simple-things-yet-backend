@@ -5,12 +5,13 @@ const {
 	categories,
 	categoryFetch,
 	categoryUpdate,
+	categoryImageUpdate,
 	categoryDelete,
 	validateCategory,
-	categoryImageFetch,
 } = require('../controllers/category');
 const Author = require('../models/author');
 const upload = require('../utils/upload');
+const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();
 
@@ -20,8 +21,8 @@ router.get('/', categories);
 // Fetch a specific category by ID
 router.get('/:id', categoryFetch);
 
-// Fetch category image
-router.get('/image/:id', categoryImageFetch);
+// Fetch category image using image ID
+router.get('/:id/image', resourceImageFetch);
 
 // Create a new category
 router.post('/',
@@ -30,6 +31,12 @@ router.post('/',
 	validateCategory,
 	categoryCreate
 );
+
+// Update an existing category image
+router.put('/:id/image',
+	authenticateUser(Author),
+	upload.single('categoryImage'),
+	categoryImageUpdate);
 
 // Update an existing category
 router.put('/:id', authenticateUser(Author), categoryUpdate);

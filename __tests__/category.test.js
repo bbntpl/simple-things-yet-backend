@@ -92,7 +92,7 @@ describe('category fetch', () => {
 
 		const category = await Category.findById(response.body.id);
 		const gfsResponse = await request
-			.get(`/api/categories/image/${category.imageId}`)
+			.get(`/api/categories/${category.imageId}/image`)
 			.expect(200);
 
 		expect(gfsResponse.headers['content-type']).toEqual('image/png');
@@ -106,24 +106,6 @@ describe('creation of category', () => {
 			description: 'A new category for testing purposes',
 		};
 
-		await request
-			.post('/api/categories')
-			.send(newCategory)
-			.set('Authorization', `Bearer ${token}`)
-			.expect(201);
-
-		const categoriesAtEnd = await categoriesInDb();
-		expect(categoriesAtEnd).toHaveLength(3);
-		const categoryNames = categoriesAtEnd.map(c => c.name);
-		expect(categoryNames).toContain(newCategory.name);
-	});
-
-	test('should successfully create a category with an image', async () => {
-		const newCategory = {
-			name: 'New Category',
-			description: 'A new category for testing purposes',
-		};
-
 		// path to the image used for upload
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 
@@ -131,7 +113,7 @@ describe('creation of category', () => {
 			.post('/api/categories')
 			.field('name', newCategory.name)
 			.field('description', newCategory.description)
-			.attach('categoryImage', filePath, 'image.jpg')
+			.attach('categoryImage', filePath, 'image.png')
 			.set('Authorization', `Bearer ${token}`)
 			.expect(201);
 
@@ -141,8 +123,8 @@ describe('creation of category', () => {
 		expect(categoryNames).toContain(newCategory.name);
 
 		// check if image is saved
-		expect(mongoose.Types.ObjectId.isValid(categoriesAtEnd[2].imageId)).toBeTruthy();
-
+		expect(mongoose.Types.ObjectId.isValid(categoriesAtEnd[2].imageId))
+			.toBeTruthy();
 	});
 	test('should fail to create a category if it already exists', async () => {
 		const duplicateCategory = {
@@ -234,6 +216,22 @@ describe('update of category', () => {
 
 		const updatedCategoryFromDb = categoriesAtEnd.find(cat => cat.id === categoryToUpdate.id);
 		expect(updatedCategoryFromDb).toMatchObject(updatedCategory);
+	});
+
+
+	test('should successfully update category representation image', async () => {
+		const categories = await categoriesInDb();
+		const categoryToUpdate = await categories[0];
+
+		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+		const updatedCategoryResponse = await request
+			.put(`/api/categories/${categoryToUpdate.id}/image`)
+			.attach('categoryImage', filePath, { filename: 'image.png' })
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+		expect(updatedCategoryResponse.body.imageId).toBeDefined();
+		expect(updatedCategoryResponse.body.imageId).not.toEqual(categoryToUpdate.imageId);
 	});
 });
 

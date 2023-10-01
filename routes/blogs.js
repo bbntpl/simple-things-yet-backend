@@ -7,11 +7,14 @@ const {
 	blogFetch,
 	blogs,
 	publishedBlogListFetch,
+	blogImageUpdate,
 	blogUpdate,
 	blogDelete,
 } = require('../controllers/blog');
 const Author = require('../models/author');
 const Viewer = require('../models/viewer');
+const upload = require('../utils/upload');
+const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();
 
@@ -24,14 +27,28 @@ router.get('/published', publishedBlogListFetch);
 // Get specific blog by ID
 router.get('/:id', blogFetch);
 
-// Create a new blog
-router.post('/', authenticateUser(Author), blogCreate);
+// Get the preview image of a specific blog using image ID
+router.get('/:id/image', resourceImageFetch);
 
-// Save/publish a new blog or update an existing draft blog
-router.post('/:publishAction', authenticateUser(Author), blogCreate); // for creating a new draft blog
+// Save/publish a new blog
+router.post('/:publishAction',
+	authenticateUser(Author),
+	upload.single('blogImage'),
+	blogCreate
+); // for creating a new draft blog
+
+// Update an existing blog image by author
+router.put('/:id/image-update/authors-only',
+	authenticateUser(Author),
+	upload.single('blogImage'),
+	blogImageUpdate
+);
 
 // Update an existing blog by author
-router.put('/:id/:publishAction/authors-only', authenticateUser(Author), blogUpdate);
+router.put('/:id/:publishAction/authors-only',
+	authenticateUser(Author),
+	blogUpdate
+);
 
 // Indirect update of an existing blog based on user's interactions
 router.put('/:id', authenticateUser(Viewer), blogUpdate);

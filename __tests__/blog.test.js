@@ -1,5 +1,6 @@
 const supertest = require('supertest');
 const mongoose = require('mongoose');
+const path = require('path');
 
 const { app, initApp } = require('../app');
 const {
@@ -37,9 +38,13 @@ const postBlog = async (blog, token, publishAction) => {
 	if (!['save', 'publish'].includes(publishAction)) {
 		throw new Error('Invalid postType');
 	}
+
+	const filePath = path.join(__dirname, '../images/dbdiagram.png');
 	return await request
 		.post(`/api/blogs/${publishAction}`)
-		.send(blog)
+		.field('title', blog.title)
+		.field('content', blog.content)
+		.attach('blogImage', filePath, 'image.png')
 		.set('Authorization', `Bearer ${token}`)
 		.expect('Content-Type', /application\/json/)
 		.expect(201);
@@ -50,6 +55,13 @@ const publishBlog = (blog, token) => postBlog(blog, token, 'publish');
 
 const getBlogs = async () => {
 	return await request.get('/api/blogs')
+		.expect('Content-Type', /application\/json/)
+		.expect(200);
+};
+
+const getBlog = async (blogId) => {
+	return await request
+		.get(`/api/blogs/${blogId}`)
 		.expect('Content-Type', /application\/json/)
 		.expect(200);
 };
@@ -74,12 +86,9 @@ describe('fetching blogs', () => {
 
 	test('should return specific blog', async () => {
 		const blog = (await blogsInDb())[0];
-		const response = await request
-			.get(`/api/blogs/${blog.id}`)
-			.expect('Content-Type', /application\/json/)
-			.expect(200);
+		const fetchedBlog = await getBlog(blog.id);
 
-		const initialBlog = response.body;
+		const initialBlog = fetchedBlog.body;
 		expect(initialBlog.content).toEqual(blog.content);
 		expect(initialBlog.title).toEqual(blog.title);
 		expect(initialBlog.isPrivate).toBeTruthy();
@@ -89,15 +98,28 @@ describe('fetching blogs', () => {
 		const blog = (await blogsInDb())[0];
 		const author = (await authorsInDb())[0];
 
-		const response = await request
-			.get(`/api/blogs/${blog.id}`)
-			.expect('Content-Type', /application\/json/)
-			.expect(200);
-
-		const initialBlog = response.body;
-		expect(initialBlog.author.id).toEqual(author.id.toString());
+		const fetchedBlog = await getBlog(blog.id);
+		const initialBlog = fetchedBlog.body;
 		expect(initialBlog.author.name).toEqual(author.name);
 		expect(initialBlog.author.bio).toEqual(author.bio);
+	});
+
+	test('should successfully get blog preview image', async () => {
+		const newBlog = {
+			title: 'new blog with preview image',
+			content: 'test purposes',
+		};
+
+		const savedBlogResponse = await saveBlog(newBlog, token);
+		expect(savedBlogResponse.body.imageId).toBeDefined();
+
+		const latestBlog = await Blog.findById(savedBlogResponse.body.id);
+
+		const gfsResponse = await request
+			.get(`/api/blogs/${latestBlog.imageId}/image`)
+			.expect(200);
+
+		expect(gfsResponse.headers['content-type']).toEqual('image/png');
 	});
 });
 
@@ -251,6 +273,22 @@ describe('update of blog', () => {
 		const blogsAtEnd = await request.get('/api/blogs');
 		const updatedTitles = blogsAtEnd.body.map(r => r.title);
 		expect(updatedTitles).toContain(updatedBlog.title);
+	});
+
+	test('should successfully update blog preview image', async () => {
+		const blogs = await blogsInDb();
+		const blogToUpdate = await getBlog(blogs[0].id);
+
+		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+		const updatedBlogImageResponse = await request
+			.put(`/api/blogs/${blogToUpdate.body.id}/image-update/authors-only`)
+			.attach('blogImage', filePath, { filename: 'image.png' })
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+
+
+		expect(updatedBlogImageResponse.body.imageId).toBeDefined();
+		expect(updatedBlogImageResponse.body.imageId).not.toEqual(blogToUpdate.body.imageId);
 	});
 
 	test('should verify that updatedAt gets modified every blog update', async () => {

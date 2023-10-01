@@ -1,12 +1,17 @@
 // Tests dataset
 
+const { default: mongoose } = require('mongoose');
+
 // For more context: test data objects that has 1 in its name are the default ones
 // Sample data for author populate
+const mockImageId = new mongoose.Types.ObjectId();
+
 const authorDetails = {
 	name: 'Random Author',
 	bio: 'This is a random author bio.',
 	email: 'first.author@gmail.com',
-	password: 'testpassword456'
+	password: 'testpassword456',
+	imageId: mockImageId,
 };
 
 exports.sampleAuthor1 = {
@@ -36,11 +41,13 @@ exports.sampleViewer2 = {
 // Sample data for categorie populate
 exports.sampleCategory1 = {
 	name: 'Technology',
-	description: 'This area is about technologies and AIs'
+	description: 'This area is about technologies and AIs',
+	imageId: mockImageId
 };
 exports.sampleCategory2 = {
 	name: 'Mental Health',
-	description: 'This area is about mental health maintenance'
+	description: 'This area is about mental health maintenance',
+	imageId: mockImageId
 };
 
 // Sample data for categorie populate
@@ -57,11 +64,13 @@ exports.sampleTag2 = {
 exports.sampleBlog1 = {
 	title: 'Test Blog',
 	content: 'This is a test blog content',
+	imageId: mockImageId
 };
 
 exports.sampleBlog2 = {
 	title: 'Hey Ya!',
 	content: 'contentconentcotnenttentcon',
+	imageId: mockImageId
 };
 
 // Sample data for comment populate

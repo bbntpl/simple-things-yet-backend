@@ -1,8 +1,6 @@
 const { body, validationResult } = require('express-validator');
 
 const Category = require('../models/category');
-const getGfs = require('../utils/gfs');
-const { default: mongoose } = require('mongoose');
 
 const validateCategory = [
 	body('name')
@@ -16,37 +14,6 @@ const validateCategory = [
 exports.validateCategory = [
 	...validateCategory
 ];
-
-exports.categoryImageFetch = async (req, res, next) => {
-	const { id } = req.params;
-	try {
-		const objectId = new mongoose.Types.ObjectId(id);
-		const gfs = await getGfs();
-		const files = await gfs.find({ _id: objectId }).toArray();
-
-		if (!files || files.length === 0) {
-			return res.status(404).json({ error: 'No file exists' });
-		}
-
-		// Make sure it is image
-		if (files[0].contentType === 'image/jpeg' || files[0].contentType === 'image/png') {
-			const mime = files[0].contentType;
-			res.set('Content-Type', mime);
-
-			// Download file and read output to abrowser
-			const readstream = gfs.openDownloadStream(objectId);
-			readstream.pipe(res);
-		} else {
-			// Otherwise, indicate that it is not an image
-			res.status(404).json({
-				error: 'Not an image'
-			});
-		}
-	} catch (err) {
-		console.log('Error', err);
-		next(err);
-	}
-};
 
 exports.categoryCreate = async (req, res, next) => {
 	const errors = validationResult(req);
@@ -62,10 +29,7 @@ exports.categoryCreate = async (req, res, next) => {
 			return res.status(400).json({ error: `Category ${req.body.name} exists already` });
 		}
 
-		const category = {
-			name,
-			description,
-		};
+		const category = { name, description };
 
 		if (req.file) {
 			category.imageId = req.file.id;
@@ -99,6 +63,26 @@ exports.categoryFetch = async (req, res, next) => {
 	}
 };
 
+exports.categoryImageUpdate = async (req, res, next) => {
+	const { id } = req.params;
+	try {
+		const categoryToUpdate = await Category.findById(id);
+		if (!categoryToUpdate) {
+			return res.status(404).json({ error: 'Category not found' });
+		}
+
+		if (req.file && req.file.id) {
+			categoryToUpdate.imageId = req.file.id;
+			await categoryToUpdate.save();
+			res.status(200).json(categoryToUpdate);
+		} else {
+			return res.status(400).json({ message: 'Uploaded category image not found' });
+		}
+	} catch (err) {
+		next(err);
+	}
+};
+
 exports.categoryUpdate = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
@@ -116,9 +100,7 @@ exports.categoryUpdate = async (req, res, next) => {
 
 		const categoryToUpdate = await Category.findByIdAndUpdate(
 			id,
-			{
-				...updatedCategory,
-			},
+			{ ...updatedCategory },
 			{ new: true }
 		);
 
