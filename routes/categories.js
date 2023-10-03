@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateUser } = require('../utils/middleware');
+const { authenticateUser, upload } = require('../utils/middleware');
 const {
 	categoryCreate,
 	categories,
@@ -10,7 +10,6 @@ const {
 	validateCategory,
 } = require('../controllers/category');
 const Author = require('../models/author');
-const upload = require('../utils/upload');
 const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();

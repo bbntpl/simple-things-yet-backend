@@ -3,12 +3,12 @@ const supertest = require('supertest');
 const bcrypt = require('bcrypt');
 
 const { app, initApp } = require('../app');
-const { sampleViewer1, sampleViewer2 } = require('../utils/testDataset');
+const { sampleViewer1, sampleViewer2 } = require('../utils/tests/dataset');
 const {
 	createInitialViewer,
 	viewersInDb,
 	loginViewer
-} = require('../utils/testHelpers');
+} = require('../utils/tests/helpers');
 const Viewer = require('../models/viewer');
 
 let token;

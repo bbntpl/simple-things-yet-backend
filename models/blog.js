@@ -29,14 +29,6 @@ const blogSchema = new Schema({
 		type: Boolean,
 		default: false
 	},
-	createdAt: {
-		type: Schema.Types.Date,
-		default: Date.now
-	},
-	updatedAt: {
-		type: Schema.Types.Date,
-		default: Date.now
-	},
 	publishedAt: Schema.Types.Date,
 	comments: [
 		{
@@ -59,11 +51,8 @@ const blogSchema = new Schema({
 		type: Boolean,
 		default: true
 	}
-});
-
-blogSchema.pre('findOneAndUpdate', function (next) {
-	this.set({ updatedAt: new Date() });
-	next();
+}, {
+	timestamps: true
 });
 
 blogSchema.pre('save', function (next) {

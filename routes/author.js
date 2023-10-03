@@ -1,7 +1,6 @@
 const express = require('express');
 
-const { authenticateUser } = require('../utils/middleware');
-const upload = require('../utils/upload');
+const { authenticateUser, upload } = require('../utils/middleware');
 
 const {
 	authorImageUpdate,

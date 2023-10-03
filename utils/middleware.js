@@ -1,7 +1,9 @@
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 
 const { SECRET_KEY } = require('./config');
+const { storageForImages } = require('./gridfs-storage');
 
 const logger = morgan('tiny');
 
@@ -61,6 +63,7 @@ const authenticateUser = (UserModel) => async (req, res, next) => {
 		res.status(401).json({ error });
 	}
 };
+const upload = multer({ storage: storageForImages });
 
 module.exports = {
 	logger,
@@ -68,5 +71,6 @@ module.exports = {
 	authenticateUser,
 	unknownEndpoint,
 	errorHandler,
-	serverErrorHandler
+	serverErrorHandler,
+	upload
 };

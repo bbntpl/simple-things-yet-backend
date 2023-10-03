@@ -1,6 +1,7 @@
 const express = require('express');
 const {
-	authenticateUser
+	authenticateUser,
+	upload
 } = require('../utils/middleware');
 const {
 	blogCreate,
@@ -13,7 +14,6 @@ const {
 } = require('../controllers/blog');
 const Author = require('../models/author');
 const Viewer = require('../models/viewer');
-const upload = require('../utils/upload');
 const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();

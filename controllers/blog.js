@@ -1,9 +1,11 @@
 const _ = require('lodash');
+const mongoose = require('mongoose');
 
 const Blog = require('../models/blog');
 const Category = require('../models/category');
 const Tag = require('../models/tag');
-const { handlePagination, handleFiltering, handleSorting } = require('../utils/queryHandlers');
+const { handlePagination, handleFiltering, handleSorting } = require('../utils/query-handlers');
+const { deleteImageFromGridFS } = require('./reusables');
 
 const insertBlogToTag = async (tagId, blogId) => {
 	try {
@@ -19,6 +21,7 @@ const insertBlogToTag = async (tagId, blogId) => {
 
 exports.blogCreate = async (req, res, next) => {
 	const { title, content, isPrivate, tags, category } = req.body;
+	console.log(req.body);
 	try {
 		if (!title || !content) {
 			return res.status(400)
@@ -40,7 +43,9 @@ exports.blogCreate = async (req, res, next) => {
 		blog = new Blog({
 			title,
 			content,
-			category,
+			// null cannot be passed directly while image upload is necessary for blog create
+			// So, I'm passing 'NONE' instead, then convert it to null
+			category: category === 'NONE' ? null : category,
 			author: req.user._id,
 			tags: tags || [],
 			isPrivate: isPrivate,
@@ -56,7 +61,7 @@ exports.blogCreate = async (req, res, next) => {
 
 		const savedBlog = await blog.save();
 
-		if (category) {
+		if (category && mongoose.Types.ObjectId.isValid(category)) {
 			const insertBlogRefToCategory = async () => {
 				const fetchedCategory = await Category.findById(category);
 
@@ -128,13 +133,16 @@ exports.blogFetch = async (req, res, next) => {
 	}
 };
 
-const removeBlogRefs = async (docsIds, DocSchema, blogToUpdateId) => {
+const removeBlogRefs = async (props) => {
+	const { docsIds, DocSchema, blogToUpdateId } = props;
 	for (const docId of docsIds) {
 		const doc = await DocSchema.findById(docId);
-		doc.blogs = doc.blogs.filter(
-			(blogId) => blogId.toString() !== blogToUpdateId.toString()
-		);
-		await doc.save();
+		if (doc && doc.blogs) {
+			doc.blogs = doc.blogs.filter(
+				(blogId) => blogId.toString() !== blogToUpdateId.toString()
+			);
+			await doc.save();
+		}
 	}
 };
 
@@ -145,7 +153,11 @@ const blogCategoryUpdate = async (blogToUpdate, updatedData) => {
 	if (oldCategoryId !== newCategoryId) {
 		// Remove blog reference from old tags
 		if (oldCategoryId) {
-			await removeBlogRefs([oldCategoryId], Category, blogToUpdate._id);
+			await removeBlogRefs({
+				docsIds: [oldCategoryId],
+				DocSchema: Category,
+				blogToUpdateId: blogToUpdate._id
+			});
 		}
 
 		// Add blog reference to new tags
@@ -166,7 +178,11 @@ const blogTagsUpdate = async (blogToUpdate, updatedData) => {
 
 	if (hasTagUpdates) {
 		// Remove blog reference from old tags
-		await removeBlogRefs(oldTagsIds, Tag, blogToUpdate._id);
+		await removeBlogRefs({
+			docsIds: oldTagsIds,
+			DocSchema: Tag,
+			blogToUpdateId: blogToUpdate._id
+		});
 
 		// Add blog reference to new tags
 		for (const tagId of newTagsIds) {
@@ -186,6 +202,11 @@ exports.blogImageUpdate = async (req, res, next) => {
 		}
 
 		if (req.file && req.file.id) {
+			if (blogToUpdate.imageId) {
+				// Delete previous image from GridFSBucket
+				await deleteImageFromGridFS(blogToUpdate.imageId);
+			}
+
 			blogToUpdate.imageId = req.file.id;
 			await blogToUpdate.save();
 			res.status(200).json(blogToUpdate);
@@ -261,13 +282,32 @@ exports.blogDelete = async (req, res, next) => {
 	try {
 		const blog = await Blog.findById(id);
 
-		const deletedBlog = await blog.deleteOne({ _id: blog._id }).then((doc) => {
-			removeBlogRefs(doc.tags, doc._id).then(() => {
-				console.log('blog is successfully deleted');
-			});
-		});
+		if (!blog) {
+			return res.status(404).send({ message: 'Blog not found' });
+		}
 
-		res.status(204).json(deletedBlog);
+		await blog.deleteOne({ _id: blog._id });
+
+		const asyncTasks = [];
+		if (blog.tags) {
+			asyncTasks.push(removeBlogRefs({
+				docsIds: blog.tags,
+				DocSchema: Tag,
+				blogToUpdateId: blog._id
+			}));
+		}
+
+		if (blog.category) {
+			asyncTasks.push(removeBlogRefs({
+				docsIds: [blog.category],
+				DocSchema: Category,
+				blogToUpdateId: blog._id
+			}));
+		}
+
+		await Promise.all(asyncTasks);
+
+		res.status(204).send();
 	} catch (err) {
 		next(err);
 	}

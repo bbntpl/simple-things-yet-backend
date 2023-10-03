@@ -5,6 +5,8 @@ const { body, validationResult } = require('express-validator');
 const Author = require('../models/author');
 const { SECRET_KEY } = require('../utils/config');
 
+const { deleteImageFromGridFS } = require('./reusables');
+
 exports.validateEmail = [
 	body('email')
 		.trim()
@@ -30,12 +32,27 @@ exports.validateAuthor = [
 exports.authorImageUpdate = async (req, res, next) => {
 	try {
 		const author = req.user;
+
+		if (!author) {
+			return res.status(404).json({ message: 'Author not found' });
+		}
+
 		if (req.file && req.file.id) {
+			if (author.imageId) {
+				// Delete previous image from GridFSBucket
+				await deleteImageFromGridFS(author.imageId);
+			}
+
 			const updatedAuthor = await Author.findByIdAndUpdate(
 				author.id,
 				{ imageId: req.file.id },
 				{ new: true }
 			);
+
+			if (!updatedAuthor) {
+				return res.status(404).json({ message: 'Author not found after update' });
+			}
+
 			res.status(200).json(updatedAuthor);
 		} else {
 			return res.status(400).json({ message: 'Uploaded author picture not found' });
@@ -53,20 +70,11 @@ exports.authorUpdate = async (req, res, next) => {
 		});
 	}
 
-	const updateData = {};
-
-	if (req.body && req.body.name) {
-		updateData.name = req.body.name;
-	}
-	if (req.body && req.body.email) {
-		updateData.email = req.body.email;
-	}
-	if (req.body && req.body.bio) {
-		updateData.bio = req.body.bio;
-	}
-	if (req.file) {
-		updateData.imageId = req.file.id;
-	}
+	const updateData = {
+		name: req.body.name,
+		email: req.body.email,
+		bio: req.body.bio
+	};
 
 	try {
 		const author = req.user;

@@ -8,12 +8,12 @@ const { MONGODB_URI } = require('../utils/config');
 const Author = require('../models/author');
 const {
 	loginAuthor
-} = require('../utils/testHelpers');
+} = require('../utils/tests/helpers');
 
 const {
 	sampleAuthor1,
 	sampleAuthor2,
-} = require('../utils/testDataset');
+} = require('../utils/tests/dataset');
 
 let server;
 const request = supertest(app);
@@ -69,10 +69,10 @@ describe('View author', () => {
 	});
 
 	test('should successfully get picture of author', async () => {
-		// login the author
+		// Login the author
 		const token = await loginAuthor(request, sampleAuthor1);
 
-		// path to the image used for upload
+		// Path to the image used for upload
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 
 		const updatedAuthorResponse = await request

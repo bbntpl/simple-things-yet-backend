@@ -13,6 +13,4 @@ const clearUploads = async (conn) => {
 	}
 };
 
-module.exports = {
-	clearUploads
-};
+module.exports = clearUploads;

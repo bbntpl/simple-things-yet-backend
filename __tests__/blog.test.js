@@ -11,15 +11,16 @@ const {
 	authorsInDb,
 	commentsInDb,
 	loginViewer,
-} = require('../utils/testHelpers');
+} = require('../utils/tests/helpers');
 const {
 	sampleAuthor1,
+	sampleBlog3,
 	sampleBlog2,
 	sampleBlog1,
 	sampleTag1,
 	sampleViewer1,
 	sampleCategory2
-} = require('../utils/testDataset');
+} = require('../utils/tests/dataset');
 const Tag = require('../models/tag');
 const Blog = require('../models/blog');
 const Viewer = require('../models/viewer');
@@ -44,6 +45,10 @@ const postBlog = async (blog, token, publishAction) => {
 		.post(`/api/blogs/${publishAction}`)
 		.field('title', blog.title)
 		.field('content', blog.content)
+		.field('tags', blog.tags)
+		.field('isPrivate', blog.isPrivate)
+		.field('likes', blog.likes)
+		.field('category', blog.category === null ? 'NONE' : blog.category)
 		.attach('blogImage', filePath, 'image.png')
 		.set('Authorization', `Bearer ${token}`)
 		.expect('Content-Type', /application\/json/)
@@ -105,12 +110,7 @@ describe('fetching blogs', () => {
 	});
 
 	test('should successfully get blog preview image', async () => {
-		const newBlog = {
-			title: 'new blog with preview image',
-			content: 'test purposes',
-		};
-
-		const savedBlogResponse = await saveBlog(newBlog, token);
+		const savedBlogResponse = await saveBlog(sampleBlog3, token);
 		expect(savedBlogResponse.body.imageId).toBeDefined();
 
 		const latestBlog = await Blog.findById(savedBlogResponse.body.id);
@@ -144,6 +144,22 @@ describe('creation of blog', () => {
 
 		expect(blogToValidate).toBeTruthy();
 		expect(blogToValidate.isPublished).toBeTruthy();
+		expect(blogs).toHaveLength(2);
+	});
+
+	test('should publish blog with null as category', async () => {
+		await publishBlog({ ...sampleBlog2, category: null }, token);
+		const response = await getBlogs();
+
+		const blogs = response.body;
+		const blogToValidate = blogs.find(blog => {
+			return blog.title === sampleBlog2.title
+				&& blog.content === sampleBlog2.content;
+		});
+
+		expect(blogToValidate).toBeTruthy();
+		expect(blogToValidate.isPublished).toBeTruthy();
+		expect(blogToValidate.category).toEqual(null);
 		expect(blogs).toHaveLength(2);
 	});
 

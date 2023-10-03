@@ -1,10 +1,10 @@
 const bcrypt = require('bcrypt');
 
-const Author = require('../models/author');
-const Viewer = require('../models/viewer');
-const Tag = require('../models/tag');
-const Blog = require('../models/blog');
-const Comment = require('../models/comment');
+const Author = require('../../models/author');
+const Viewer = require('../../models/viewer');
+const Tag = require('../../models/tag');
+const Blog = require('../../models/blog');
+const Comment = require('../../models/comment');
 const {
 	sampleAuthor1,
 	sampleViewer1,
@@ -15,8 +15,8 @@ const {
 	sampleComment2,
 	sampleCategory1,
 	sampleCategory2,
-} = require('../utils/testDataset');
-const Category = require('../models/category');
+} = require('./dataset');
+const Category = require('../../models/category');
 
 const deleteDbsForBlogTests = async ({
 	deleteCommentCollection = false

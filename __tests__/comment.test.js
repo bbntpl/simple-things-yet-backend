@@ -9,12 +9,12 @@ const {
 	commentsInDb,
 	loginViewer,
 	createInitialViewer,
-} = require('../utils/testHelpers');
+} = require('../utils/tests/helpers');
 const {
 	sampleAuthor1,
 	sampleViewer1,
 	sampleViewer2
-} = require('../utils/testDataset');
+} = require('../utils/tests/dataset');
 const Viewer = require('../models/viewer');
 const Comment = require('../models/comment');
 const Author = require('../models/author');

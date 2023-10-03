@@ -10,8 +10,8 @@ const {
 	populateTagsDb,
 	tagsInDb,
 	loginAuthor
-} = require('../utils/testHelpers');
-const { sampleAuthor1, sampleTag1, sampleTag2 } = require('../utils/testDataset');
+} = require('../utils/tests/helpers');
+const { sampleAuthor1, sampleTag1, sampleTag2 } = require('../utils/tests/dataset');
 
 let token;
 let server;

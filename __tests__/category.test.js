@@ -11,8 +11,8 @@ const {
 	populateCategoriesDb,
 	categoriesInDb,
 	loginAuthor
-} = require('../utils/testHelpers');
-const { sampleAuthor1, sampleCategory1, sampleCategory2 } = require('../utils/testDataset');
+} = require('../utils/tests/helpers');
+const { sampleAuthor1, sampleCategory1, sampleCategory2 } = require('../utils/tests/dataset');
 const { clearUploads } = require('../utils/clearUploads');
 
 let token;

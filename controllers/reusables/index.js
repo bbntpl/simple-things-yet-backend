@@ -31,3 +31,14 @@ exports.resourceImageFetch = async (req, res, next) => {
 		next(err);
 	}
 };
+
+exports.deleteImageFromGridFS = async (imageId) => {
+	try {
+		const gfs = await getGfs();
+		await gfs.delete(new mongoose.Types.ObjectId(imageId));
+		console.log('Image deleted successfully');
+	} catch (err) {
+		console.error('Error in deleteImageFromGridFS:', err);
+		throw err;
+	}
+};

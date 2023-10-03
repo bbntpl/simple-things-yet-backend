@@ -6,7 +6,7 @@ const Viewer = require('../models/viewer');
 
 const mongoose = require('mongoose');
 const { MONGODB_URI } = require('./config');
-const { clearUploads } = require('./clearUploads');
+const clearUploads = require('./clearUploads');
 
 async function connectDB() {
 	try {

@@ -1,6 +1,7 @@
 const { body, validationResult } = require('express-validator');
 
 const Category = require('../models/category');
+const { deleteImageFromGridFS } = require('./reusables');
 
 const validateCategory = [
 	body('name')
@@ -72,6 +73,11 @@ exports.categoryImageUpdate = async (req, res, next) => {
 		}
 
 		if (req.file && req.file.id) {
+			if (categoryToUpdate.imageId) {
+				// Delete previous image from GridFSBucket
+				await deleteImageFromGridFS(categoryToUpdate.imageId);
+			}
+
 			categoryToUpdate.imageId = req.file.id;
 			await categoryToUpdate.save();
 			res.status(200).json(categoryToUpdate);
