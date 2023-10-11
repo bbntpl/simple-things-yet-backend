@@ -291,20 +291,19 @@ describe('update of blog', () => {
 		expect(updatedTitles).toContain(updatedBlog.title);
 	});
 
-	test('should successfully update blog preview image', async () => {
-		const blogs = await blogsInDb();
-		const blogToUpdate = await getBlog(blogs[0].id);
+	test.only('should successfully update blog preview image', async () => {
+		const newBlog = await saveBlog(sampleBlog2, token);
 
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 		const updatedBlogImageResponse = await request
-			.put(`/api/blogs/${blogToUpdate.body.id}/image-update/authors-only`)
+			.put(`/api/blogs/${newBlog.body.id}/image-update/authors-only`)
 			.attach('blogImage', filePath, { filename: 'image.png' })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
 
 		expect(updatedBlogImageResponse.body.imageId).toBeDefined();
-		expect(updatedBlogImageResponse.body.imageId).not.toEqual(blogToUpdate.body.imageId);
+		expect(updatedBlogImageResponse.body.imageId).not.toEqual(newBlog.body.imageId);
 	});
 
 	test('should verify that updatedAt gets modified every blog update', async () => {

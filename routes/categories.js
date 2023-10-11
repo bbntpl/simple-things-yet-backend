@@ -8,6 +8,8 @@ const {
 	categoryImageUpdate,
 	categoryDelete,
 	validateCategory,
+	categoriesWithPublishedBlogs,
+	categoriesWithTotalBlogs
 } = require('../controllers/category');
 const Author = require('../models/author');
 const { resourceImageFetch } = require('../controllers/reusables');
@@ -16,6 +18,12 @@ const router = express.Router();
 
 // Ge tall of the categories
 router.get('/', categories);
+
+// Get categories that has minimum of one published blogs
+router.get('/with-total-blogs', categoriesWithTotalBlogs);
+
+// Get categories that has minimum of one published blogs
+router.get('/with-published-blogs', categoriesWithPublishedBlogs);
 
 // Fetch a specific category by ID
 router.get('/:id', categoryFetch);

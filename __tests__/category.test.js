@@ -13,7 +13,7 @@ const {
 	loginAuthor
 } = require('../utils/tests/helpers');
 const { sampleAuthor1, sampleCategory1, sampleCategory2 } = require('../utils/tests/dataset');
-const { clearUploads } = require('../utils/clearUploads');
+const clearUploads = require('../utils/clearUploads');
 
 let token;
 let server;
@@ -220,18 +220,24 @@ describe('update of category', () => {
 
 
 	test('should successfully update category representation image', async () => {
-		const categories = await categoriesInDb();
-		const categoryToUpdate = await categories[0];
-
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+
+		const newCategory = await request
+			.post('/api/categories')
+			.field('name', 'new category')
+			.field('description', 'new description')
+			.attach('categoryImage', filePath, 'image.png')
+			.set('Authorization', `Bearer ${token}`)
+			.expect(201);
+
 		const updatedCategoryResponse = await request
-			.put(`/api/categories/${categoryToUpdate.id}/image`)
+			.put(`/api/categories/${newCategory.body.id}/image`)
 			.attach('categoryImage', filePath, { filename: 'image.png' })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
 		expect(updatedCategoryResponse.body.imageId).toBeDefined();
-		expect(updatedCategoryResponse.body.imageId).not.toEqual(categoryToUpdate.imageId);
+		expect(updatedCategoryResponse.body.imageId).not.toEqual(newCategory.body.imageId);
 	});
 });
 

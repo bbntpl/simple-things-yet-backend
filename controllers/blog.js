@@ -21,7 +21,6 @@ const insertBlogToTag = async (tagId, blogId) => {
 
 exports.blogCreate = async (req, res, next) => {
 	const { title, content, isPrivate, tags, category } = req.body;
-	console.log(req.body);
 	try {
 		if (!title || !content) {
 			return res.status(400)
@@ -107,11 +106,35 @@ exports.blogs = async (req, res, next) => {
 
 exports.publishedBlogListFetch = async (req, res, next) => {
 	try {
+		const pagination = handlePagination(req);
+		const filters = handleFiltering(req, ['category']);
+		const sorts = handleSorting(req, {
+			oldest: { date: 1 },
+			latest: { date: -1 }
+		});
+
 		const publishedBlogs = await Blog.find({
 			isPublished: true,
-			isPrivate: false
-		});
+			isPrivate: false,
+			...filters
+		}).skip(pagination.skip)
+			.limit(pagination.limit)
+			.sort(sorts);
 		res.json(publishedBlogs);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.totalUncategorizedPublishedBlogs = async (req, res, next) => {
+	try {
+		const uncategorizedPublishedBlogsLength = await Blog.countDocuments({
+			isPublished: true,
+			isPrivate: false,
+			category: null
+		});
+
+		res.json({ blogsLength: uncategorizedPublishedBlogsLength });
 	} catch (err) {
 		next(err);
 	}

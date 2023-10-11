@@ -1,5 +1,7 @@
+const { default: mongoose } = require('mongoose');
+
 const handlePagination = (req) => {
-	const { page = 1, limit = 8 } = req.query;
+	const { page = 1, limit = 12 } = req.query;
 	const skip = (Number(page) - 1) * Number(limit);
 	return { skip, limit: Number(limit) };
 };
@@ -11,6 +13,13 @@ const handleFiltering = (req, filters = []) => {
 			query[filter] = req.query[filter];
 		}
 	});
+
+	if (req.query.excludeIds) {
+		const idsToExclude = req.query.excludeIds.split(',')
+			.map(id => mongoose.Types.ObjectId(id));
+		query._id = { $nin: idsToExclude };
+	}
+
 	return query;
 };
 

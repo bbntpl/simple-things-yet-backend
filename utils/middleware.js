@@ -5,7 +5,7 @@ const multer = require('multer');
 const { SECRET_KEY } = require('./config');
 const { storageForImages } = require('./gridfs-storage');
 
-const logger = morgan('tiny');
+const logger = morgan(':method :url :status :res[content-length] - :response-time ms - :date[clf]');
 
 const tokenExtractor = (req, res, next) => {
 	// code that extracts the token

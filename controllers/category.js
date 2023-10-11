@@ -2,6 +2,7 @@ const { body, validationResult } = require('express-validator');
 
 const Category = require('../models/category');
 const { deleteImageFromGridFS } = require('./reusables');
+const { handleSorting, handleFiltering, handlePagination } = require('../utils/query-handlers');
 
 const validateCategory = [
 	body('name')
@@ -48,6 +49,152 @@ exports.categoryCreate = async (req, res, next) => {
 exports.categories = async (req, res, next) => {
 	try {
 		const categories = await Category.find({});
+		res.json(categories);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.categoriesWithTotalBlogs = async (req, res, next) => {
+	try {
+		const pagination = handlePagination(req);
+		const filters = handleFiltering(req, []);
+		const sorts = handleSorting(req, {
+			asc: { name: 1 },
+			desc: { name: -1 }
+		});
+
+		const pipeline = [
+			// Stage 1: Append the referenced blog documents to the current category document
+			{
+				$lookup: {
+					from: 'blogs',
+					localField: '_id',
+					foreignField: 'category',
+					as: 'blogs'
+				}
+			},
+			// Stage 2: Filter out categories without published blogs
+			{
+				$match: {
+					'blogs.isPublished': true,
+					'blogs.isPrivate': false,
+				}
+			},
+			// Stage 3: Add new field that gets the size of filtered publicly availabe blogs
+			{
+				$addFields: {
+					totalBlogs: {
+						$size: {
+							$filter: {
+								input: '$blogs',
+								as: 'blog',
+								cond: {
+									$and: [
+										{ $eq: ['$$blog.isPrivate', false] },
+										{ $eq: ['$$blog.isPublished', true] }
+									]
+								}
+							}
+						}
+					}
+				}
+			},
+			// Stage 4: Remove non needed embedded documents and fields
+			{
+				$unset: ['blogs', '__v']
+			},
+			...Object.entries(filters)
+				.map(([key, value]) => ({ $match: { [key]: value } })),
+			{ $sort: sorts },
+			{ $skip: pagination.skip },
+			{ $limit: pagination.limit }
+		];
+
+		const categories = await Category.aggregate(pipeline);
+		res.json(categories);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.categoriesWithPublishedBlogs = async (req, res, next) => {
+	try {
+		const pagination = handlePagination(req);
+		const filters = handleFiltering(req, []);
+		const sorts = handleSorting(req, {
+			asc: { name: 1 },
+			desc: { name: -1 }
+		});
+
+		const pipeline = [
+			// Stage 1: Append the referenced blog documents to the current category document
+			{
+				$lookup: {
+					from: 'blogs',
+					localField: '_id',
+					foreignField: 'category',
+					as: 'blogs'
+				}
+			},
+			// Stage 2: Filter out categories without published blogs
+			{
+				$match: {
+					'blogs.isPublished': true,
+					'blogs.isPrivate': false
+				},
+			},
+			// Stage 3: Add new field that gets filters publicly available blogs
+			// and not yet fetched beforehand
+			{
+				$addFields: {
+					publishedBlogs: {
+						$filter: {
+							input: {
+								$map: {
+									input: '$blogs',
+									as: 'blog',
+									in: {
+										$cond: {
+											if: {
+												$and: [
+													{ $eq: ['$$blog.isPrivate', false] },
+													{ $eq: ['$$blog.isPublished', true] },
+													{ $not: { $in: ['$$blog._id', req.query.excludeIds || []] } }
+												]
+											},
+											then: '$$blog',
+											else: null
+										}
+									}
+								}
+							},
+							as: 'blog',
+							cond: { $ne: ['$$blog', null] }
+						}
+					}
+				}
+			},
+			// Stage 4: Remove non needed embedded documents and fields
+			{
+				$unset: ['blogs', '__v']
+			},
+			// Stage 5: Only match more than 3 published blogs
+			{
+				$match: {
+					$expr: {
+						$gte: [{ $size: '$publishedBlogs' }, 3]
+					}
+				}
+			},
+			...Object.entries(filters)
+				.map(([key, value]) => ({ $match: { [key]: value } })),
+			{ $sort: sorts },
+			{ $skip: pagination.skip },
+			{ $limit: pagination.limit }
+		];
+
+		const categories = await Category.aggregate(pipeline);
 		res.json(categories);
 	} catch (err) {
 		next(err);
