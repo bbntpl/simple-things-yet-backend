@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const Category = require('../models/category');
 const { deleteImageFromGridFS } = require('./reusables');
 const { handleSorting, handleFiltering, handlePagination } = require('../utils/query-handlers');
+const { default: mongoose } = require('mongoose');
 
 const validateCategory = [
 	body('name')
@@ -55,7 +56,7 @@ exports.categories = async (req, res, next) => {
 	}
 };
 
-exports.categoriesWithTotalBlogs = async (req, res, next) => {
+exports.categoriesWithPublishedBlogs = async (req, res, next) => {
 	try {
 		const pagination = handlePagination(req);
 		const filters = handleFiltering(req, []);
@@ -63,6 +64,11 @@ exports.categoriesWithTotalBlogs = async (req, res, next) => {
 			asc: { name: 1 },
 			desc: { name: -1 }
 		});
+
+		const excludeIds = req.query.excludeIds === '' ? []
+			: req.query.excludeIds.map(id => {
+				return new mongoose.Types.ObjectId(id);
+			});
 
 		const pipeline = [
 			// Stage 1: Append the referenced blog documents to the current category document
@@ -81,28 +87,45 @@ exports.categoriesWithTotalBlogs = async (req, res, next) => {
 					'blogs.isPrivate': false,
 				}
 			},
-			// Stage 3: Add new field that gets the size of filtered publicly availabe blogs
+			// Stage 3: Add new field that extract the published & public blogs ids
 			{
 				$addFields: {
-					totalBlogs: {
-						$size: {
-							$filter: {
-								input: '$blogs',
-								as: 'blog',
-								cond: {
-									$and: [
-										{ $eq: ['$$blog.isPrivate', false] },
-										{ $eq: ['$$blog.isPublished', true] }
-									]
+					publishedBlogs: {
+						$filter: {
+							input: {
+								$map: {
+									input: '$blogs',
+									as: 'blog',
+									in: {
+										$cond: {
+											if: {
+												$and: [
+													{ $eq: ['$$blog.isPrivate', false] },
+													{ $eq: ['$$blog.isPublished', true] },
+													{ $not: { $in: ['$$blog._id', excludeIds || []] } }
+												]
+											},
+											then: '$$blog._id',
+											else: null
+										}
+									}
 								}
-							}
+							},
+							as: 'blog',
+							cond: { $ne: ['$$blog', null] }
 						}
 					}
 				}
 			},
-			// Stage 4: Remove non needed embedded documents and fields
+			// Stage 4: Add id field
 			{
-				$unset: ['blogs', '__v']
+				$addFields: {
+					id: '$_id'
+				}
+			},
+			// Stage 5: Remove non needed embedded documents and fields
+			{
+				$unset: ['blogs', '__v', '_id']
 			},
 			...Object.entries(filters)
 				.map(([key, value]) => ({ $match: { [key]: value } })),
@@ -118,14 +141,23 @@ exports.categoriesWithTotalBlogs = async (req, res, next) => {
 	}
 };
 
-exports.categoriesWithPublishedBlogs = async (req, res, next) => {
+exports.categoriesWithLatestBlogs = async (req, res, next) => {
 	try {
 		const pagination = handlePagination(req);
 		const filters = handleFiltering(req, []);
 		const sorts = handleSorting(req, {
 			asc: { name: 1 },
-			desc: { name: -1 }
+			desc: { name: -1 },
+			larger: { totalPublishedBlogs: 1 },
+			smaller: { totalPublishedBlogs: - 1 },
 		});
+
+		console.log(req.query);
+		const excludeIds = req.query.excludeIds === undefined
+			|| req.query.excludeIds === '' ? []
+			: req.query.excludeIds.map(id => {
+				return new mongoose.Types.ObjectId(id);
+			});
 
 		const pipeline = [
 			// Stage 1: Append the referenced blog documents to the current category document
@@ -140,6 +172,7 @@ exports.categoriesWithPublishedBlogs = async (req, res, next) => {
 			// Stage 2: Filter out categories without published blogs
 			{
 				$match: {
+					'_id': { $nin: excludeIds },
 					'blogs.isPublished': true,
 					'blogs.isPrivate': false
 				},
@@ -160,7 +193,7 @@ exports.categoriesWithPublishedBlogs = async (req, res, next) => {
 												$and: [
 													{ $eq: ['$$blog.isPrivate', false] },
 													{ $eq: ['$$blog.isPublished', true] },
-													{ $not: { $in: ['$$blog._id', req.query.excludeIds || []] } }
+													{ $not: { $in: ['$$blog._id', excludeIds || []] } }
 												]
 											},
 											then: '$$blog',
@@ -175,15 +208,56 @@ exports.categoriesWithPublishedBlogs = async (req, res, next) => {
 					}
 				}
 			},
-			// Stage 4: Remove non needed embedded documents and fields
+			// Stage 4: Add new field blog id
 			{
-				$unset: ['blogs', '__v']
+				$addFields: {
+					publishedBlogs: {
+						$map: {
+							input: '$publishedBlogs',
+							as: 'blog',
+							in: {
+								$mergeObjects: [
+									'$$blog',
+									{
+										id: '$$blog._id',
+									},
+								],
+							},
+						},
+					},
+				},
 			},
-			// Stage 5: Only match more than 3 published blogs
+			// Stage 5: Remove non needed embedded documents (or/and its fields)
+			// and fields
+			{
+				$unset: ['blogs', '__v', 'publishedBlogs._id', 'publishedBlogs.__v']
+			},
+			// Stage 6: Add own size of total published blogs
+			{
+				$addFields: {
+					totalPublishedBlogs: {
+						$size: '$publishedBlogs'
+					}
+				}
+			},
+			// Stage 7: Only match categories between is greater than equal to 3
 			{
 				$match: {
 					$expr: {
-						$gte: [{ $size: '$publishedBlogs' }, 3]
+						$gte: ['$totalPublishedBlogs', 2],
+					}
+				}
+			},
+			// Stage 8: Only get the first 10 blogs (maximum)
+			{
+				$addFields: {
+					publishedBlogs: {
+						$slice: ['$publishedBlogs', 0, {
+							$min: [
+								{ $size: '$publishedBlogs' },
+								2
+							]
+						}]
 					}
 				}
 			},

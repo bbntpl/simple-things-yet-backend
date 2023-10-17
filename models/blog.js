@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { default: slugify } = require('slugify');
 
 const { Schema } = mongoose;
 
@@ -58,6 +59,14 @@ const blogSchema = new Schema({
 blogSchema.pre('save', function (next) {
 	if (this.isPublished && !this.publishedAt) {
 		this.set({ publishedAt: new Date() });
+	}
+
+	next();
+});
+
+blogSchema.pre('save', function (next) {
+	if (this.isModified('title')) {
+		this.slug = slugify(this.title, { lower: true, strict: true });
 	}
 
 	next();
