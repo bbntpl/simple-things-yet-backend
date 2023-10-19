@@ -1,6 +1,7 @@
 const { body, validationResult } = require('express-validator');
 const Tag = require('../models/tag');
 const { default: slugify } = require('slugify');
+const { handleFiltering, handleSorting } = require('../utils/query-handlers');
 
 const validateTag = [
 	body('name')
@@ -40,7 +41,16 @@ exports.tagCreate = async (req, res, next) => {
 
 exports.tags = async (req, res, next) => {
 	try {
-		const tags = await Tag.find({});
+		const filters = handleFiltering(req, []);
+		const sorts = handleSorting(req, {
+			asc: { name: 1 },
+			desc: { name: -1 }
+		});
+
+		const tags = await Tag.find({
+			...filters
+		}).sort(sorts);
+
 		res.json(tags);
 	} catch (err) {
 		next(err);

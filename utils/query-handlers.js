@@ -17,7 +17,7 @@ const handleFiltering = (req, filters = []) => {
 	if (req.query.excludeIds) {
 		const idsToExclude = req.query.excludeIds.split(',')
 			.map(id => mongoose.Types.ObjectId(id));
-		query._id = { $nin: idsToExclude };
+		query.id = { $nin: idsToExclude };
 	}
 
 	return query;

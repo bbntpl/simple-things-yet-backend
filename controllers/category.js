@@ -66,7 +66,7 @@ exports.categoriesWithPublishedBlogs = async (req, res, next) => {
 		});
 
 		const excludeIds = req.query.excludeIds === '' ? []
-			: req.query.excludeIds.map(id => {
+			: req.query.excludeIds.split(',').map(id => {
 				return new mongoose.Types.ObjectId(id);
 			});
 

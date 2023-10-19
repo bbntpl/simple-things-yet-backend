@@ -84,6 +84,18 @@ exports.blogCreate = async (req, res, next) => {
 	}
 };
 
+exports.totalPublishedBlogs = async (_req, res, next) => {
+	try {
+		const totalPublishedBlogs = Blog.countDocuments({
+			isPublished: true,
+			isPrivate: false,
+		});
+		res.json({ size: totalPublishedBlogs });
+	} catch (err) {
+		next(err);
+	}
+};
+
 exports.blogs = async (req, res, next) => {
 	try {
 		const pagination = handlePagination(req);
@@ -128,13 +140,13 @@ exports.publishedBlogListFetch = async (req, res, next) => {
 
 exports.totalUncategorizedPublishedBlogs = async (req, res, next) => {
 	try {
-		const uncategorizedPublishedBlogsLength = await Blog.countDocuments({
+		const totalUncategorizedPublishedBlogs = await Blog.countDocuments({
 			isPublished: true,
 			isPrivate: false,
 			category: null
 		});
 
-		res.json({ blogsLength: uncategorizedPublishedBlogsLength });
+		res.json({ size: totalUncategorizedPublishedBlogs });
 	} catch (err) {
 		next(err);
 	}
