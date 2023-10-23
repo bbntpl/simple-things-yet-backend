@@ -1,8 +1,5 @@
-# SimpleThingsYet Personal Blog Backend
-
-SimpleThingsYet is an intuitive blogging application where the only author posts blogs on a wide range of categories such as personal growth, self-improvement, lifelong learning, mental health, and general life observations. The application is built around the idea that life's simplest things often hide the most complexity, depth, and meaning.
-
-This document provides an overview of the backend of the application and offers details on the data model schema to aid developers in navigating the system's structure.
+# SimpleThingsYet Backend
+An overview of application backend which offers details/info on the data model schema to aid developers in navigating the model's structure.
 
 ## Data Model Schema
 For a visual representation, refer to the database diagram:
@@ -12,9 +9,9 @@ For a visual representation, refer to the database diagram:
 ## Environmental variables template
 
 ```
-MONGODB_URI=
-DEV_MONGODB_URI=
-TEST_MONGODB_URI=
+MONGODB_URI=<mongodb cluster uri>
+DEV_MONGODB_URI=<mongodb cluster uri>
+TEST_MONGODB_URI=<mongodb cluster uri>
 SECRET_KEY=<any string>
 NODE_ENV=<development, production or test>
 PORT=<port number>
