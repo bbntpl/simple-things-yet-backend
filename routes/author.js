@@ -9,7 +9,8 @@ const {
 	authorRegister,
 	authorLogin,
 	validateAuthor,
-	validateEmail
+	validateEmail,
+	authorInfoFetch
 } = require('../controllers/author');
 const Author = require('../models/author');
 const { resourceImageFetch } = require('../controllers/reusables');
@@ -17,6 +18,8 @@ const { resourceImageFetch } = require('../controllers/reusables');
 const router = express.Router();
 
 router.get('/', authorFetch);
+
+router.get('/info', authorInfoFetch);
 
 router.get('/:id/image', resourceImageFetch);
 

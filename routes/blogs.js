@@ -13,6 +13,7 @@ const {
 	blogDelete,
 	totalPublishedBlogs,
 	totalUncategorizedPublishedBlogs,
+	publishedBlogFetch,
 } = require('../controllers/blog');
 const Author = require('../models/author');
 const Viewer = require('../models/viewer');
@@ -31,6 +32,9 @@ router.get('/published/total-blogs', totalPublishedBlogs);
 
 // Get all published blogs that does not have category
 router.get('/published/unset-category', totalUncategorizedPublishedBlogs);
+
+// Get specific published blog by id or slug 
+router.get('/published/doc', publishedBlogFetch);
 
 // Get specific blog by ID
 router.get('/:id', blogFetch);

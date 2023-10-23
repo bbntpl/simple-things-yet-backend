@@ -1,11 +1,19 @@
 const _ = require('lodash');
 const mongoose = require('mongoose');
+const { default: slugify } = require('slugify');
 
 const Blog = require('../models/blog');
 const Category = require('../models/category');
 const Tag = require('../models/tag');
-const { handlePagination, handleFiltering, handleSorting } = require('../utils/query-handlers');
-const { deleteImageFromGridFS } = require('./reusables');
+const {
+	handlePagination,
+	handleFiltering,
+	handleSorting
+} = require('../utils/query-handlers');
+const {
+	deleteImageFromGridFS,
+	hasImageExistsInGridFS
+} = require('./reusables');
 
 const insertBlogToTag = async (tagId, blogId) => {
 	try {
@@ -101,8 +109,8 @@ exports.blogs = async (req, res, next) => {
 		const pagination = handlePagination(req);
 		const filters = handleFiltering(req, ['category']);
 		const sorts = handleSorting(req, {
-			oldest: { date: 1 },
-			latest: { date: -1 }
+			oldest: { publishedAt: 1 },
+			latest: { publishedAt: -1 }
 		});
 
 		const blogs = await Blog.find(filters)
@@ -121,8 +129,8 @@ exports.publishedBlogListFetch = async (req, res, next) => {
 		const pagination = handlePagination(req);
 		const filters = handleFiltering(req, ['category']);
 		const sorts = handleSorting(req, {
-			oldest: { date: 1 },
-			latest: { date: -1 }
+			oldest: { publishedAt: 1 },
+			latest: { publishedAt: -1 }
 		});
 
 		const publishedBlogs = await Blog.find({
@@ -157,7 +165,29 @@ exports.blogFetch = async (req, res, next) => {
 
 	try {
 		const blog = await Blog.findById(id).populate('author');
+		if (!blog) {
+			return res.status(404).json({ message: 'Blog not found' });
+		}
 
+		res.json(blog);
+	} catch (err) {
+		next(err);
+	}
+};
+
+
+exports.publishedBlogFetch = async (req, res, next) => {
+	const filters = handleFiltering(req, ['slug, id']);
+
+	try {
+		const blog = await Blog.findOne({
+			isPrivate: false,
+			isPublished: true,
+			...filters,
+		})
+			.populate('category')
+			.populate('tags')
+			.populate('comments');
 		if (!blog) {
 			return res.status(404).json({ message: 'Blog not found' });
 		}
@@ -237,12 +267,17 @@ exports.blogImageUpdate = async (req, res, next) => {
 		}
 
 		if (req.file && req.file.id) {
-			if (blogToUpdate.imageId) {
+			const doesFileExists = await hasImageExistsInGridFS(blogToUpdate.imageId);
+			if (doesFileExists && req.file.id) {
 				// Delete previous image from GridFSBucket
 				await deleteImageFromGridFS(blogToUpdate.imageId);
+				blogToUpdate.imageId = req.file.id;
+			} else if (!doesFileExists && !req.file.id) {
+				blogToUpdate.imageId = null;
+			} else {
+				blogToUpdate.imageId = req.file.id;
 			}
 
-			blogToUpdate.imageId = req.file.id;
 			await blogToUpdate.save();
 			res.status(200).json(blogToUpdate);
 		} else {
@@ -257,14 +292,17 @@ exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
 
 	try {
+		// Get the current state of blog by ID excluding slug property
 		const blogToUpdate = await Blog.findById(id);
-		const blogPropsToUpdate = {};
+		const blogPropsToUpdate = {
+			slug: slugify(req.body.title, { lower: true, strict: true })
+		};
 
 		// Iterate over each field in the req body
 		// to isolate blog props that'll be updated	
 		for (const key in req.body) {
-			// eslint-disable-next-line no-prototype-builtins
-			if (req.body.hasOwnProperty(key)) {
+			if (key === 'slug') continue;
+			if (Object.hasOwn(req.body, key)) {
 				if (!_.isEqual(blogToUpdate[key], req.body[key])) {
 					blogPropsToUpdate[key] = req.body[key];
 				}

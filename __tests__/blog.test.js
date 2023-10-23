@@ -291,7 +291,7 @@ describe('update of blog', () => {
 		expect(updatedTitles).toContain(updatedBlog.title);
 	});
 
-	test.only('should successfully update blog preview image', async () => {
+	test('should successfully update blog preview image', async () => {
 		const newBlog = await saveBlog(sampleBlog2, token);
 
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');

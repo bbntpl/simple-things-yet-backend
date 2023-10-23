@@ -38,7 +38,18 @@ exports.deleteImageFromGridFS = async (imageId) => {
 		await gfs.delete(new mongoose.Types.ObjectId(imageId));
 		console.log('Image deleted successfully');
 	} catch (err) {
-		console.error('Error in deleteImageFromGridFS:', err);
+		console.error('Error in deleting image from grid fs:', err);
+		throw err;
+	}
+};
+
+exports.hasImageExistsInGridFS = async (imageId) => {
+	try {
+		const gfs = await getGfs();
+		const result = await gfs.find({ _id: new mongoose.Types.ObjectId(imageId) });
+		return result.hasNext();
+	} catch (err) {
+		console.error('Error in finding image from grid fs:', err);
 		throw err;
 	}
 };

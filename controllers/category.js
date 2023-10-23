@@ -1,7 +1,7 @@
 const { body, validationResult } = require('express-validator');
 
 const Category = require('../models/category');
-const { deleteImageFromGridFS } = require('./reusables');
+const { deleteImageFromGridFS, hasImageExistsInGridFS } = require('./reusables');
 const { handleSorting, handleFiltering, handlePagination } = require('../utils/query-handlers');
 const { default: mongoose } = require('mongoose');
 
@@ -248,7 +248,7 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 					}
 				}
 			},
-			// Stage 8: Only get the first 10 blogs (maximum)
+			// Stage 8: Only get the first 2 blogs (maximum)
 			{
 				$addFields: {
 					publishedBlogs: {
@@ -294,9 +294,16 @@ exports.categoryImageUpdate = async (req, res, next) => {
 		}
 
 		if (req.file && req.file.id) {
+			const doesFileExists = await hasImageExistsInGridFS(categoryToUpdate.imageId);
 			if (categoryToUpdate.imageId) {
 				// Delete previous image from GridFSBucket
 				await deleteImageFromGridFS(categoryToUpdate.imageId);
+
+				categoryToUpdate.imageId = req.file.id;
+			} else if (!doesFileExists && !req.file.id) {
+				categoryToUpdate.imageId = null;
+			} else {
+				categoryToUpdate.imageId = req.file.id;
 			}
 
 			categoryToUpdate.imageId = req.file.id;

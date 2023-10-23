@@ -107,6 +107,21 @@ exports.authorFetch = async (req, res, next) => {
 	}
 };
 
+exports.authorInfoFetch = async (req, res, next) => {
+	try {
+		const author = await Author.findOne({}).
+			select('-email -username -createdAt');
+
+		if (!author) {
+			return res.status(404).json({ message: 'Author not found' });
+		}
+
+		res.json(author);
+	} catch (err) {
+		next(err);
+	}
+};
+
 exports.authorRegister = async (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
