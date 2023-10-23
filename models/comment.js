@@ -15,20 +15,12 @@ const commentSchema = new Schema({
 			ref: 'Viewer'
 		}
 	],
-	createdAt: {
-		type: Schema.Types.Date,
-		default: Date.now
-	},
-	updatedAt: {
-		type: Schema.Types.Date,
-		default: Date.now
-	},
 	author: {
 		type: Schema.Types.ObjectId,
 		ref: 'Author',
 		default: null,
 		validate: {
-			validator: function() {
+			validator: function () {
 				return this.author !== null || this.viewer !== null;
 			},
 			message: 'Either author or viewer must be the user'
@@ -39,7 +31,7 @@ const commentSchema = new Schema({
 		ref: 'Viewer',
 		default: null,
 		validate: {
-			validator: function() {
+			validator: function () {
 				return this.author !== null || this.viewer !== null;
 			},
 			message: 'Either author or viewer must be the user'
@@ -61,6 +53,8 @@ const commentSchema = new Schema({
 			ref: 'Comment'
 		}
 	]
+}, {
+	timestamps: true
 });
 
 commentSchema.pre('findOneAndUpdate', function (next) {

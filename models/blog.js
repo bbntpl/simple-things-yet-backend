@@ -7,6 +7,12 @@ const blogSchema = new Schema({
 	title: {
 		type: String,
 		required: true,
+		unique: true,
+	},
+	slug: {
+		type: String,
+		required: true,
+		unique: true,
 	},
 	content: {
 		type: String,
@@ -16,9 +22,10 @@ const blogSchema = new Schema({
 		type: Schema.Types.ObjectId,
 		ref: 'Author'
 	},
-	imageId: {
+	imageFile: {
 		type: Schema.Types.ObjectId,
-		required: true
+		ref: 'ImageFile',
+		default: null
 	},
 	likes: [
 		{
@@ -61,17 +68,12 @@ blogSchema.pre('save', function (next) {
 		this.set({ publishedAt: new Date() });
 	}
 
-	next();
-});
-
-blogSchema.pre('save', function (next) {
 	if (this.isModified('title')) {
 		this.slug = slugify(this.title, { lower: true, strict: true });
 	}
 
 	next();
 });
-
 
 // Transform output after converting it to JSON
 blogSchema.set('toJSON', {
@@ -83,4 +85,5 @@ blogSchema.set('toJSON', {
 });
 
 const Blog = mongoose.model('Blog', blogSchema);
+
 module.exports = Blog;

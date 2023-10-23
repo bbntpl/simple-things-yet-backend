@@ -15,10 +15,13 @@ const categorySchema = new Schema({
 	},
 	slug: {
 		type: String,
+		required: true,
+		unique: true,
 	},
-	imageId: {
+	imageFile: {
 		type: Schema.Types.ObjectId,
-		required: true
+		ref: 'ImageFile',
+		default: null
 	},
 	blogs: [
 		{

@@ -21,16 +21,14 @@ const viewerSchema = new Schema({
 		required: true,
 		minlength: 8,
 	},
-	createdAt: {
-		type: mongoose.Schema.Types.Date,
-		default: Date.now,
-	},
 	comments: [
 		{
 			type: Schema.Types.ObjectId,
 			ref: 'Comment',
 		},
 	],
+}, {
+	timestamps: true
 });
 
 // Transform output after converting it to JSON

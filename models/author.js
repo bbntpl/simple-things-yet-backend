@@ -15,9 +15,10 @@ const authorSchema = new Schema({
 		required: true,
 		default: 'Write something here'
 	},
-	imageId: {
+	imageFile: {
 		type: Schema.Types.ObjectId,
-		required: false
+		ref: 'ImageFile',
+		default: null
 	},
 	email: {
 		type: String,
@@ -42,16 +43,14 @@ const authorSchema = new Schema({
 		required: true,
 		minlength: 8
 	},
-	createdAt: {
-		type: mongoose.Schema.Types.Date,
-		default: Date.now
-	},
 	comments: [
 		{
 			type: Schema.Types.ObjectId,
 			ref: 'Comment'
 		}
 	],
+}, {
+	timestamps: true
 });
 
 // Transform output after converting it to JSON
