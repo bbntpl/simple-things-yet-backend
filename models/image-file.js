@@ -38,6 +38,16 @@ const imageFileSchema = new mongoose.Schema({
 	},
 });
 
+
+// Transform output after converting it to JSON
+imageFileSchema.set('toJSON', {
+	versionKey: false,
+	transform: function (_, returnedObject) {
+		returnedObject.id = returnedObject._id.toString();
+		delete returnedObject._id;
+	},
+});
+
 const ImageFile = mongoose.model('ImageFile', imageFileSchema);
 
 module.exports = ImageFile;

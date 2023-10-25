@@ -11,6 +11,8 @@ const {
 	authorsInDb,
 	commentsInDb,
 	loginViewer,
+	saveBlog,
+	publishBlog,
 } = require('../utils/tests/helpers');
 const {
 	sampleAuthor1,
@@ -34,29 +36,6 @@ const request = supertest(app);
 beforeAll(async () => {
 	server = await initApp();
 });
-
-const postBlog = async (blog, token, publishAction) => {
-	if (!['save', 'publish'].includes(publishAction)) {
-		throw new Error('Invalid postType');
-	}
-
-	const filePath = path.join(__dirname, '../images/dbdiagram.png');
-	return await request
-		.post(`/api/blogs/${publishAction}`)
-		.field('title', blog.title)
-		.field('content', blog.content)
-		.field('tags', blog.tags)
-		.field('isPrivate', blog.isPrivate)
-		.field('likes', blog.likes)
-		.field('category', blog.category === null ? 'NONE' : blog.category)
-		.attach('blogImage', filePath, 'image.png')
-		.set('Authorization', `Bearer ${token}`)
-		.expect('Content-Type', /application\/json/)
-		.expect(201);
-};
-
-const saveBlog = (blog, token) => postBlog(blog, token, 'save');
-const publishBlog = (blog, token) => postBlog(blog, token, 'publish');
 
 const getBlogs = async () => {
 	return await request.get('/api/blogs')
@@ -110,13 +89,17 @@ describe('fetching blogs', () => {
 	});
 
 	test('should successfully get blog preview image', async () => {
-		const savedBlogResponse = await saveBlog(sampleBlog3, token);
-		expect(savedBlogResponse.body.imageId).toBeDefined();
+		const savedBlogResponse = await saveBlog(request, {
+			blog: sampleBlog3,
+			token
+		});
+		expect(savedBlogResponse.body.imageFile).toBeDefined();
+		expect(savedBlogResponse.body.imageFile).not.toBe(null);
 
 		const latestBlog = await Blog.findById(savedBlogResponse.body.id);
 
 		const gfsResponse = await request
-			.get(`/api/blogs/${latestBlog.imageId}/image`)
+			.get(`/api/blogs/${latestBlog.imageFile.id}/image`)
 			.expect(200);
 
 		expect(gfsResponse.headers['content-type']).toEqual('image/png');
@@ -133,7 +116,10 @@ describe('creation of blog', () => {
 	});
 
 	test('should publish a valid blog', async () => {
-		await publishBlog(sampleBlog2, token);
+		await publishBlog(request, {
+			blog: sampleBlog2,
+			token
+		});
 		const response = await getBlogs();
 
 		const blogs = response.body;
@@ -148,7 +134,10 @@ describe('creation of blog', () => {
 	});
 
 	test('should publish blog with null as category', async () => {
-		await publishBlog({ ...sampleBlog2, category: null }, token);
+		await publishBlog(request, {
+			blog: { ...sampleBlog2, category: null },
+			token
+		});
 		const response = await getBlogs();
 
 		const blogs = response.body;
@@ -164,7 +153,10 @@ describe('creation of blog', () => {
 	});
 
 	test('should save a blog as a draft (not published)', async () => {
-		await saveBlog(sampleBlog2, token);
+		await saveBlog(request, {
+			blog: sampleBlog2,
+			token
+		});
 		const response = await getBlogs();
 
 		const blogs = response.body;
@@ -181,7 +173,10 @@ describe('creation of blog', () => {
 	describe('that is published', () => {
 		test('should include reference to the only author', async () => {
 			const author = (await authorsInDb())[0];
-			await publishBlog(sampleBlog2, token);
+			await publishBlog(request, {
+				blog: sampleBlog2,
+				token
+			});
 			const response = await getBlogs();
 
 			const blogs = response.body;
@@ -198,7 +193,10 @@ describe('creation of blog', () => {
 		});
 
 		test('should set the publish date after publication', async () => {
-			await publishBlog(sampleBlog2, token);
+			await publishBlog(request, {
+				blog: sampleBlog2,
+				token
+			});
 			const response = await getBlogs();
 
 			const blogs = response.body;
@@ -292,7 +290,10 @@ describe('update of blog', () => {
 	});
 
 	test('should successfully update blog preview image', async () => {
-		const newBlog = await saveBlog(sampleBlog2, token);
+		const newBlog = await saveBlog(request, {
+			blog: sampleBlog2,
+			token
+		});
 
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 		const updatedBlogImageResponse = await request
@@ -302,8 +303,9 @@ describe('update of blog', () => {
 			.expect(200);
 
 
-		expect(updatedBlogImageResponse.body.imageId).toBeDefined();
-		expect(updatedBlogImageResponse.body.imageId).not.toEqual(newBlog.body.imageId);
+		expect(updatedBlogImageResponse.body.imageFile).toBeDefined();
+		expect(updatedBlogImageResponse.body.imageFile.id)
+			.not.toEqual(newBlog.body.imageFile.id);
 	});
 
 	test('should verify that updatedAt gets modified every blog update', async () => {

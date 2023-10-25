@@ -21,6 +21,13 @@ const baseBlogDetails = {
 	isPrivate: true
 };
 
+exports.sampleImageCredit = {
+	authorName: 'First Author',
+	authorLink: 'https://github.com/firztauthor',
+	sourceName: 'Unsplash',
+	sourceLink: 'https://unsplash.com'
+};
+
 exports.sampleAuthor1 = {
 	username: 'randauthor1',
 	...authorDetails

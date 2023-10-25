@@ -1,11 +1,35 @@
 const { default: mongoose } = require('mongoose');
 const getGfs = require('../../utils/gfs');
 
+
+exports.hasImageExistsInGridFS = async (imageId) => {
+	try {
+		const objectId = new mongoose.Types.ObjectId(imageId);
+		const gfs = await getGfs();
+		const result = await gfs.find({ _id: objectId });
+		return result.hasNext();
+	} catch (err) {
+		console.error('Error in finding image from grid fs:', err);
+		throw err;
+	}
+};
+
+exports.deleteImageFromGridFS = async (imageId) => {
+	try {
+		const gfs = await getGfs();
+		await gfs.delete(new mongoose.Types.ObjectId(imageId));
+		console.log('Image deleted successfully');
+	} catch (err) {
+		console.error('Error in deleting image from grid fs:', err);
+		throw err;
+	}
+};
+
 exports.resourceImageFetch = async (req, res, next) => {
 	const { id } = req.params;
 	try {
-		const objectId = new mongoose.Types.ObjectId(id);
 		const gfs = await getGfs();
+		const objectId = new mongoose.Types.ObjectId(id);
 		const files = await gfs.find({ _id: objectId }).toArray();
 
 		if (!files || files.length === 0) {
@@ -27,29 +51,6 @@ exports.resourceImageFetch = async (req, res, next) => {
 			});
 		}
 	} catch (err) {
-		console.log('Error', err);
 		next(err);
-	}
-};
-
-exports.deleteImageFromGridFS = async (imageId) => {
-	try {
-		const gfs = await getGfs();
-		await gfs.delete(new mongoose.Types.ObjectId(imageId));
-		console.log('Image deleted successfully');
-	} catch (err) {
-		console.error('Error in deleting image from grid fs:', err);
-		throw err;
-	}
-};
-
-exports.hasImageExistsInGridFS = async (imageId) => {
-	try {
-		const gfs = await getGfs();
-		const result = await gfs.find({ _id: new mongoose.Types.ObjectId(imageId) });
-		return result.hasNext();
-	} catch (err) {
-		console.error('Error in finding image from grid fs:', err);
-		throw err;
 	}
 };

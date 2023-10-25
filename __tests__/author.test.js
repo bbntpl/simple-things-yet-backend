@@ -29,6 +29,13 @@ const getAuthorWithHashedPassword = async (sampleAuthor) => {
 	};
 };
 
+const getAuthor = async () => {
+	return await request
+		.get('/api/author')
+		.expect('Content-Type', /application\/json/)
+		.expect(200);
+};
+
 beforeAll(async () => {
 	server = await initApp();
 	await Author.deleteMany({});
@@ -48,10 +55,7 @@ describe('View author', () => {
 	});
 
 	test('should fetch author object', async () => {
-		const response = await request
-			.get('/api/author')
-			.expect('Content-Type', /application\/json/)
-			.expect(200);
+		const response = await getAuthor();
 
 		expect(response.body).toHaveProperty('name', sampleAuthor1.name);
 		expect(response.body).toHaveProperty('bio', sampleAuthor1.bio);
@@ -60,19 +64,13 @@ describe('View author', () => {
 	});
 
 	test('should not show passwordHash', async () => {
-		const response = await request
-			.get('/api/author')
-			.expect('Content-Type', /application\/json/)
-			.expect(200);
-
+		const response = await getAuthor();
 		expect(response.body.passwordHash).not.toBeDefined();
 	});
 
 	test('should successfully get picture of author', async () => {
-		// Login the author
 		const token = await loginAuthor(request, sampleAuthor1);
 
-		// Path to the image used for upload
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 
 		const updatedAuthorResponse = await request
@@ -80,11 +78,12 @@ describe('View author', () => {
 			.attach('authorImage', filePath, { filename: 'image.png' })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
-		expect(updatedAuthorResponse.body.imageId).toBeDefined();
+		expect(updatedAuthorResponse.body.imageFile).toBeDefined();
+		expect(updatedAuthorResponse.body.imageFile.id).toBeDefined();
 
 		const author = await Author.findById(updatedAuthorResponse.body.id);
 		const gfsResponse = await request
-			.get(`/api/author/${author.imageId}/image`)
+			.get(`/api/images/${author.imageFile.id}`)
 			.expect(200);
 		expect(gfsResponse.headers['content-type']).toEqual('image/png');
 	});
@@ -194,10 +193,9 @@ describe('Update of author', () => {
 	});
 
 	test('should successfully update picture of author', async () => {
-		const authorResponse = await request
-			.get('/api/author')
-			.expect('Content-Type', /application\/json/)
-			.expect(200);
+		const authorResponse = await getAuthor();
+		expect(authorResponse.body.imageFile).toBeDefined();
+		expect(authorResponse.body.imageFile.id).toBeDefined();
 
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 
@@ -207,8 +205,9 @@ describe('Update of author', () => {
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
-		expect(updatedAuthorImageResponse.body.imageId).toBeDefined();
-		expect(updatedAuthorImageResponse.body.imageId).not.toEqual(authorResponse.body.imageId);
+		expect(updatedAuthorImageResponse.body.imageFile).toBeDefined();
+		expect(updatedAuthorImageResponse.body.imageFile.id)
+			.not.toEqual(authorResponse.body.imageFile.id);
 	});
 });
 

@@ -16,13 +16,13 @@ const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();
 
-// Ge tall of the categories
+// Get all of the categories
 router.get('/', categories);
 
-// Get categories that has minimum of one published blogs
+// Get categories that has embedded latest blogs
 router.get('/with-latest-blogs', categoriesWithLatestBlogs);
 
-// Get categories that has minimum of one published blogs
+// Get categories that has published blogs instead of every blogs
 router.get('/with-published-blogs', categoriesWithPublishedBlogs);
 
 // Fetch a specific category by ID

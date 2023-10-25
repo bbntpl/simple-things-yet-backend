@@ -7,6 +7,7 @@ const Viewer = require('../models/viewer');
 const mongoose = require('mongoose');
 const { MONGODB_URI } = require('./config');
 const clearUploads = require('./clearUploads');
+const Category = require('../models/category');
 
 async function connectDB() {
 	try {
@@ -23,6 +24,7 @@ async function clearDb() {
 	await Tag.deleteMany({});
 	await Author.deleteMany({});
 	await Viewer.deleteMany({});
+	await Category.deleteMany({});
 }
 
 connectDB()

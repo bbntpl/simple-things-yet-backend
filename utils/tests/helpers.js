@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const path = require('path');
 
 const Author = require('../../models/author');
 const Viewer = require('../../models/viewer');
@@ -17,6 +18,7 @@ const {
 	sampleCategory2,
 } = require('./dataset');
 const Category = require('../../models/category');
+const ImageFile = require('../../models/image-file');
 
 const deleteDbsForBlogTests = async ({
 	deleteCommentCollection = false
@@ -163,6 +165,54 @@ const loginViewer = async (api, viewer) => {
 	return response.body.token;
 };
 
+const postBlog = async (api, data) => {
+	const { blog, token, publishAction } = data;
+	if (!['save', 'publish'].includes(publishAction)) {
+		throw new Error('Invalid post type');
+	}
+
+	const filePath = path.join(__dirname, '../../images/dbdiagram.png');
+	return await api
+		.post(`/api/blogs/${publishAction}`)
+		.field('title', blog.title)
+		.field('content', blog.content)
+		.field('tags', blog.tags)
+		.field('isPrivate', blog.isPrivate)
+		.field('likes', blog.likes)
+		.field('category', blog.category === null ? 'NONE' : blog.category)
+		.attach('blogImage', filePath, 'image.png')
+		.set('Authorization', `Bearer ${token}`)
+		.expect('Content-Type', /application\/json/)
+		.expect(201);
+};
+
+const saveBlog = async (api, data) => await postBlog(api, {
+	blog: data.blog,
+	token: data.token,
+	publishAction: 'save'
+});
+
+const publishBlog = async (api, data) => await postBlog(api, {
+	blog: data.blog,
+	token: data.token,
+	publishAction: 'publish'
+});
+
+const createCategoryWithImage = async (api, data) => {
+	const { category, token } = data;
+	const filePath = path.join(__dirname, '../../images/dbdiagram.png');
+
+	const newCategory = await api
+		.post('/api/categories')
+		.field('name', category.name)
+		.field('description', category.description)
+		.attach('categoryImage', filePath, 'image.png')
+		.set('Authorization', `Bearer ${token}`)
+		.expect(201);
+
+	return newCategory;
+};
+
 const blogsInDb = async () => {
 	const blogs = await Blog.find({});
 	return blogs.map(blog => blog.toJSON());
@@ -193,12 +243,20 @@ const tagsInDb = async () => {
 	return tags.map(tag => tag.toJSON());
 };
 
+const imageDocsInDb = async () => {
+	const imageDocs = await ImageFile.find({});
+	return imageDocs.map(doc => doc.toJSON());
+};
+
 module.exports = {
 	deleteDbsForBlogTests,
 	createInitialAuthor,
 	createInitialViewer,
 	loginAuthor,
 	loginViewer,
+	saveBlog,
+	publishBlog,
+	createCategoryWithImage,
 	populateBlogsDb,
 	populateCategoriesDb,
 	populateTagsDb,
@@ -208,4 +266,5 @@ module.exports = {
 	tagsInDb,
 	commentsInDb,
 	viewersInDb,
+	imageDocsInDb,
 };
