@@ -13,15 +13,12 @@ const {
 	authorInfoFetch
 } = require('../controllers/author');
 const Author = require('../models/author');
-const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();
 
 router.get('/', authorFetch);
 
 router.get('/info', authorInfoFetch);
-
-router.get('/:id/image', resourceImageFetch);
 
 router.post('/register', validateAuthor, authorRegister);
 

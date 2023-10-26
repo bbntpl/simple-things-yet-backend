@@ -6,8 +6,8 @@ exports.hasImageExistsInGridFS = async (imageId) => {
 	try {
 		const objectId = new mongoose.Types.ObjectId(imageId);
 		const gfs = await getGfs();
-		const result = await gfs.find({ _id: objectId });
-		return result.hasNext();
+		const files = await gfs.find({ _id: objectId }).toArray();
+		return files && files.length > 0;
 	} catch (err) {
 		console.error('Error in finding image from grid fs:', err);
 		throw err;
@@ -31,7 +31,6 @@ exports.resourceImageFetch = async (req, res, next) => {
 		const gfs = await getGfs();
 		const objectId = new mongoose.Types.ObjectId(id);
 		const files = await gfs.find({ _id: objectId }).toArray();
-
 		if (!files || files.length === 0) {
 			return res.status(404).json({ error: 'No file exists' });
 		}

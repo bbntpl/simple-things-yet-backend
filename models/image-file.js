@@ -13,6 +13,9 @@ const imageFileSchema = new mongoose.Schema({
 		type: Number,
 		required: true,
 	},
+	referencedDocs: [{
+		type: mongoose.Schema.Types.ObjectId,
+	}],
 	uploadDate: {
 		type: Date,
 		default: Date.now,

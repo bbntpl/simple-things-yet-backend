@@ -1,4 +1,5 @@
 const express = require('express');
+
 const {
 	authenticateUser,
 	upload
@@ -17,7 +18,6 @@ const {
 } = require('../controllers/blog');
 const Author = require('../models/author');
 const Viewer = require('../models/viewer');
-const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();
 
@@ -38,9 +38,6 @@ router.get('/published/doc', publishedBlogFetch);
 
 // Get specific blog by ID
 router.get('/:id', blogFetch);
-
-// Get the preview image of a specific blog using image ID
-router.get('/:id/image', resourceImageFetch);
 
 // Save/publish a new blog
 router.post('/:publishAction',

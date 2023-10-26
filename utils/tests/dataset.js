@@ -11,7 +11,7 @@ const authorDetails = {
 	bio: 'This is a random author bio.',
 	email: 'first.author@gmail.com',
 	password: 'testpassword456',
-	imageId: generateMongoObjectId(),
+	imageFile: generateMongoObjectId(),
 };
 
 const baseBlogDetails = {
@@ -56,12 +56,12 @@ exports.sampleViewer2 = {
 exports.sampleCategory1 = {
 	name: 'Technology',
 	description: 'This area is about technologies and AIs',
-	imageId: generateMongoObjectId()
+	imageFile: generateMongoObjectId()
 };
 exports.sampleCategory2 = {
 	name: 'Mental Health',
 	description: 'This area is about mental health maintenance',
-	imageId: generateMongoObjectId()
+	imageFile: generateMongoObjectId()
 };
 
 // Sample data for categorie populate
@@ -78,21 +78,21 @@ exports.sampleBlog1 = {
 	...baseBlogDetails,
 	title: 'Test Blog',
 	content: 'This is a test blog content',
-	imageId: generateMongoObjectId()
+	imageFile: generateMongoObjectId()
 };
 
 exports.sampleBlog2 = {
 	...baseBlogDetails,
 	title: 'Hey Ya!',
 	content: 'contentconentcotnenttentcon',
-	imageId: generateMongoObjectId()
+	imageFile: generateMongoObjectId()
 };
 
 exports.sampleBlog3 = {
 	...baseBlogDetails,
 	title: 'blog 3 title',
 	content: '<p>blog 3 content</p>',
-	imageId: generateMongoObjectId()
+	imageFile: generateMongoObjectId()
 };
 
 // Sample data for comment populate

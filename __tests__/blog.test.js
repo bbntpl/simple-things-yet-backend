@@ -99,7 +99,7 @@ describe('fetching blogs', () => {
 		const latestBlog = await Blog.findById(savedBlogResponse.body.id);
 
 		const gfsResponse = await request
-			.get(`/api/blogs/${latestBlog.imageFile.id}/image`)
+			.get(`/api/images/${latestBlog.imageFile}/source`)
 			.expect(200);
 
 		expect(gfsResponse.headers['content-type']).toEqual('image/png');
@@ -304,8 +304,8 @@ describe('update of blog', () => {
 
 
 		expect(updatedBlogImageResponse.body.imageFile).toBeDefined();
-		expect(updatedBlogImageResponse.body.imageFile.id)
-			.not.toEqual(newBlog.body.imageFile.id);
+		expect(updatedBlogImageResponse.body.imageFile)
+			.not.toEqual(newBlog.body.imageFile);
 	});
 
 	test('should verify that updatedAt gets modified every blog update', async () => {

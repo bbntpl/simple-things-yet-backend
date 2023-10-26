@@ -1,4 +1,5 @@
 const express = require('express');
+
 const { authenticateUser, upload } = require('../utils/middleware');
 const {
 	categoryCreate,
@@ -12,7 +13,6 @@ const {
 	categoriesWithLatestBlogs
 } = require('../controllers/category');
 const Author = require('../models/author');
-const { resourceImageFetch } = require('../controllers/reusables');
 
 const router = express.Router();
 
@@ -27,9 +27,6 @@ router.get('/with-published-blogs', categoriesWithPublishedBlogs);
 
 // Fetch a specific category by ID
 router.get('/:id', categoryFetch);
-
-// Fetch category image using image ID
-router.get('/:id/image', resourceImageFetch);
 
 // Create a new category
 router.post('/',

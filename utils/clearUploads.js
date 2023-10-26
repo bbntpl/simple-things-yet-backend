@@ -4,12 +4,10 @@ const clearUploads = async (conn) => {
 
 	if (collectionNames.includes('uploads.files')) {
 		await conn.dropCollection('uploads.files');
-		console.log('Cleared uploads.files');
 	}
 
 	if (collectionNames.includes('uploads.chunks')) {
 		await conn.dropCollection('uploads.chunks');
-		console.log('Cleared uploads.chunks');
 	}
 };
 

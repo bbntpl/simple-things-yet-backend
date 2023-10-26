@@ -11,9 +11,10 @@ const {
 	handleSorting
 } = require('../utils/query-handlers');
 const {
-	deleteImageFromGridFS,
-	hasImageExistsInGridFS
+	hasImageExistsInGridFS, getFilesnamesFromGridFS
 } = require('./reusables');
+const ImageFile = require('../models/image-file');
+const { imageFileCreateAndSetRefId } = require('./image-file');
 
 const insertBlogToTag = async (tagId, blogId) => {
 	try {
@@ -58,8 +59,16 @@ exports.blogCreate = async (req, res, next) => {
 			isPrivate: isPrivate,
 		});
 
+
 		if (req.file) {
-			blog.imageId = req.file.id;
+			const doesFileExistsAlready = await hasImageExistsInGridFS(req.file.id);
+			const filesnames = await getFilesnamesFromGridFS(req.file.id);
+			console.log(doesFileExistsAlready, filesnames);
+			if (doesFileExistsAlready) {
+				blog.imageFile = req.file.id;
+			} else {
+				await imageFileCreateAndSetRefId(req, blog);
+			}
 		}
 
 		if (publishAction === 'publish') {
@@ -261,23 +270,38 @@ const blogTagsUpdate = async (blogToUpdate, updatedData) => {
 exports.blogImageUpdate = async (req, res, next) => {
 	const { id } = req.params;
 	try {
-		const blogToUpdate = await Blog.findById(id);
+		const blogToUpdate = await Blog.findById(id).populate('imageFile');
 		if (!blogToUpdate) {
 			return res.status(404).json({ error: 'Blog not found' });
 		}
 
 		if (req.file && req.file.id) {
-			const doesFileExists = await hasImageExistsInGridFS(blogToUpdate.imageId);
-			if (doesFileExists && req.file.id) {
-				// Delete previous image from GridFSBucket
-				await deleteImageFromGridFS(blogToUpdate.imageId);
-				blogToUpdate.imageId = req.file.id;
-			} else if (!doesFileExists && !req.file.id) {
-				blogToUpdate.imageId = null;
+			const doesCurrentImageExists = await hasImageExistsInGridFS(blogToUpdate.imageFile?.id);
+			const doesImageAsReplacementExists = await hasImageExistsInGridFS(req.body?.imageFile);
+			let newImageFileId;
+
+			// If both IDs are not equal and uploaded is an existing image, then replace the current image with an
+			// existing image from db	
+			if (req.body?.imageFile
+				&& blogToUpdate.imageFile !== req.body.imageFile
+				&& doesImageAsReplacementExists) {
+				newImageFileId = req.body.imageFile;
+			} else if (doesCurrentImageExists) {
+				newImageFileId = req.file.id;
 			} else {
-				blogToUpdate.imageId = req.file.id;
+				const newImageFile = new ImageFile({
+					fileType: req.file.mimetype,
+					fileName: req.file.originalname,
+					size: req.file.size,
+					referencedDocs: [blogToUpdate.id],
+					_id: req.file.id,
+					...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
+				});
+				newImageFileId = newImageFile._id;
+				newImageFile.save();
 			}
 
+			blogToUpdate.imageFile = newImageFileId;
 			await blogToUpdate.save();
 			res.status(200).json(blogToUpdate);
 		} else {

@@ -79,11 +79,10 @@ describe('View author', () => {
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 		expect(updatedAuthorResponse.body.imageFile).toBeDefined();
-		expect(updatedAuthorResponse.body.imageFile.id).toBeDefined();
 
 		const author = await Author.findById(updatedAuthorResponse.body.id);
 		const gfsResponse = await request
-			.get(`/api/images/${author.imageFile.id}`)
+			.get(`/api/images/${author.imageFile}/source`)
 			.expect(200);
 		expect(gfsResponse.headers['content-type']).toEqual('image/png');
 	});
@@ -195,7 +194,6 @@ describe('Update of author', () => {
 	test('should successfully update picture of author', async () => {
 		const authorResponse = await getAuthor();
 		expect(authorResponse.body.imageFile).toBeDefined();
-		expect(authorResponse.body.imageFile.id).toBeDefined();
 
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 
@@ -206,8 +204,8 @@ describe('Update of author', () => {
 			.expect(200);
 
 		expect(updatedAuthorImageResponse.body.imageFile).toBeDefined();
-		expect(updatedAuthorImageResponse.body.imageFile.id)
-			.not.toEqual(authorResponse.body.imageFile.id);
+		expect(updatedAuthorImageResponse.body.imageFile)
+			.not.toEqual(authorResponse.body.imageFile);
 	});
 });
 

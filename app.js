@@ -22,6 +22,7 @@ const tagsRouter = require('./routes/tags');
 const commentsRouter = require('./routes/comments');
 const viewersRouter = require('./routes/viewers');
 const categoriesRouter = require('./routes/categories');
+const imageFilesRouter = require('./routes/image-files');
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use('/api/tags', tagsRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/viewers', viewersRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/images', imageFilesRouter);
 
 // Setup error handlers as middleware
 app.use(unknownEndpoint);

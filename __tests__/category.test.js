@@ -87,7 +87,7 @@ describe('category fetch', () => {
 
 		const category = await Category.findById(response.body.id);
 		const gfsResponse = await request
-			.get(`/api/categories/${category.imageFile.id}/image`)
+			.get(`/api/images/${category.imageFile}/source`)
 			.expect(200);
 
 		expect(gfsResponse.headers['content-type']).toEqual('image/png');
@@ -226,8 +226,8 @@ describe('update of category', () => {
 			.expect(200);
 
 		expect(updatedCategoryResponse.body.imageFile).toBeDefined();
-		expect(updatedCategoryResponse.body.imageFile.id)
-			.not.toEqual(newCategory.body.imageFile.id);
+		expect(updatedCategoryResponse.body.imageFile)
+			.not.toEqual(newCategory.body.imageFile);
 	});
 });
 

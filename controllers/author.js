@@ -5,7 +5,8 @@ const { body, validationResult } = require('express-validator');
 const Author = require('../models/author');
 const { SECRET_KEY } = require('../utils/config');
 
-const { deleteImageFromGridFS } = require('./reusables');
+const { hasImageExistsInGridFS } = require('./reusables');
+const ImageFile = require('../models/image-file');
 
 exports.validateEmail = [
 	body('email')
@@ -32,20 +33,39 @@ exports.validateAuthor = [
 exports.authorImageUpdate = async (req, res, next) => {
 	try {
 		const author = req.user;
-
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });
 		}
 
 		if (req.file && req.file.id) {
-			if (author.imageId) {
-				// Delete previous image from GridFSBucket
-				await deleteImageFromGridFS(author.imageId);
+			const doesCurrentImageExists = await hasImageExistsInGridFS(author.imageFile);
+			const doesImageAsReplacementExists = await hasImageExistsInGridFS(req.body?.imageFile);
+			let newImageFileId;
+
+			// If both IDs are not equal and uploaded is an existing image, then replace the current image with an
+			// existing image from db	
+			if (req.body?.imageFile
+				&& author.imageFile !== req.body.imageFile
+				&& doesImageAsReplacementExists) {
+				newImageFileId = req.body.imageFile;
+			} else if (doesCurrentImageExists) {
+				newImageFileId = req.file.id;
+			} else {
+				const newImageFile = new ImageFile({
+					fileType: req.file.mimetype,
+					fileName: req.file.originalname,
+					size: req.file.size,
+					referencedDocs: [author.id],
+					_id: req.file.id,
+					...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
+				});
+				newImageFileId = newImageFile._id;
+				newImageFile.save();
 			}
 
 			const updatedAuthor = await Author.findByIdAndUpdate(
 				author.id,
-				{ imageId: req.file.id },
+				{ imageFile: newImageFileId },
 				{ new: true }
 			);
 
@@ -55,7 +75,7 @@ exports.authorImageUpdate = async (req, res, next) => {
 
 			res.status(200).json(updatedAuthor);
 		} else {
-			return res.status(400).json({ message: 'Uploaded author picture not found' });
+			res.status(400).json({ message: 'Uploaded author picture not found' });
 		}
 	} catch (err) {
 		next(err);
@@ -96,7 +116,7 @@ exports.authorUpdate = async (req, res, next) => {
 
 exports.authorFetch = async (req, res, next) => {
 	try {
-		const author = await Author.findOne({});
+		const author = await Author.findOne({}).populate('imageFile');
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });
 		}

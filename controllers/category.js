@@ -1,9 +1,11 @@
 const { body, validationResult } = require('express-validator');
 
 const Category = require('../models/category');
-const { deleteImageFromGridFS, hasImageExistsInGridFS } = require('./reusables');
+const { hasImageExistsInGridFS, getFilesnamesFromGridFS } = require('./reusables');
 const { handleSorting, handleFiltering, handlePagination } = require('../utils/query-handlers');
 const { default: mongoose } = require('mongoose');
+const ImageFile = require('../models/image-file');
+const { imageFileCreateAndSetRefId } = require('./image-file');
 
 const validateCategory = [
 	body('name')
@@ -33,14 +35,19 @@ exports.categoryCreate = async (req, res, next) => {
 		}
 
 		const category = { name, description };
+		const newCategory = new Category(category);
 
 		if (req.file) {
-			category.imageId = req.file.id;
+			const doesFileExistsAlready = await hasImageExistsInGridFS(req.file.id);
+			console.log(doesFileExistsAlready, filesnames);
+			if (doesFileExistsAlready) {
+				category.imageFile = req.file.id;
+			} else {
+				await imageFileCreateAndSetRefId(req, newCategory);
+			}
 		}
 
-		const newCategory = new Category(category);
 		await newCategory.save();
-
 		res.status(201).json(newCategory);
 	} catch (err) {
 		next(err);
@@ -294,19 +301,32 @@ exports.categoryImageUpdate = async (req, res, next) => {
 		}
 
 		if (req.file && req.file.id) {
-			const doesFileExists = await hasImageExistsInGridFS(categoryToUpdate.imageId);
-			if (categoryToUpdate.imageId) {
-				// Delete previous image from GridFSBucket
-				await deleteImageFromGridFS(categoryToUpdate.imageId);
+			const doesCurrentImageExists = await hasImageExistsInGridFS(categoryToUpdate.imageFile?.id);
+			const doesImageAsReplacementExists = await hasImageExistsInGridFS(req.body?.imageFile);
+			let newImageFileId;
 
-				categoryToUpdate.imageId = req.file.id;
-			} else if (!doesFileExists && !req.file.id) {
-				categoryToUpdate.imageId = null;
+			// If both IDs are not equal and uploaded is an existing image, then replace the current image with an
+			// existing image from db	
+			if (req.body?.imageFile
+				&& categoryToUpdate.imageFile !== req.body.imageFile
+				&& doesImageAsReplacementExists) {
+				newImageFileId = req.body.imageFile;
+			} else if (doesCurrentImageExists) {
+				newImageFileId = req.file.id;
 			} else {
-				categoryToUpdate.imageId = req.file.id;
+				const newImageFile = new ImageFile({
+					fileType: req.file.mimetype,
+					fileName: req.file.originalname,
+					size: req.file.size,
+					referencedDocs: [categoryToUpdate.id],
+					_id: req.file.id,
+					...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
+				});
+				newImageFileId = newImageFile._id;
+				newImageFile.save();
 			}
 
-			categoryToUpdate.imageId = req.file.id;
+			categoryToUpdate.imageFile = newImageFileId;
 			await categoryToUpdate.save();
 			res.status(200).json(categoryToUpdate);
 		} else {
