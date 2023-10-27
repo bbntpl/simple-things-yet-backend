@@ -1,8 +1,40 @@
 const { default: mongoose } = require('mongoose');
 const getGfs = require('../../utils/gfs');
+const ImageFile = require('../../models/image-file');
 
+exports.getImageFileIdForUpdate = async (req, doc) => {
+	// const doesCurrentImageExists = await this.hasImageInGridFS(doc.imageFile);
+	const doesImageAsReplacementExists = await this.hasImageInGridFS(req.body.imageFile);
+	const doesImageFileDocAsReplacementExists = await ImageFile.findById(req.body.imageFile);
+	// const doesCurrentImageFileDocExists = await ImageFile.findById(doc.imageFile);
+	let newImageFileId;
 
-exports.hasImageExistsInGridFS = async (imageId) => {
+	// If both IDs are not equal and uploaded is an existing image, then replace the current image with an
+	// existing image from db	
+	if (doc.imageFile !== req.body.imageFile
+		&& doesImageAsReplacementExists
+		&& doesImageFileDocAsReplacementExists) {
+		newImageFileId = req.body.imageFile;
+	} else if (doc.imageFile !== req.body.imageFile
+		&& !doesImageFileDocAsReplacementExists) {
+		const newImageFile = new ImageFile({
+			fileType: req.file.mimetype,
+			fileName: req.file.originalname,
+			size: req.file.size,
+			referencedDocs: [doc.id],
+			_id: req.file.id,
+			...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
+		});
+		newImageFileId = newImageFile._id;
+		newImageFile.save();
+	} else {
+		newImageFileId = req.file.id;
+	}
+
+	return newImageFileId;
+};
+
+exports.hasImageInGridFS = async (imageId) => {
 	try {
 		const objectId = new mongoose.Types.ObjectId(imageId);
 		const gfs = await getGfs();

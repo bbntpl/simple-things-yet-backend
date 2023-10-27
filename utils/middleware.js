@@ -63,6 +63,26 @@ const authenticateUser = (UserModel) => async (req, res, next) => {
 		res.status(401).json({ error });
 	}
 };
+
+const parseJSON = (req, _res, next) => {
+	try {
+		if (Object.keys(req.body).length > 0) {
+			for (const [key, value] of Object.entries(req.body)) {
+				try {
+					const parsedValue = JSON.parse(value);
+					req.body[key] = parsedValue;
+				} catch {
+					// If value cannot be parsed, continue to the next prop	
+					continue;
+				}
+			}
+		}
+		next();
+	} catch (error) {
+		next(error);
+	}
+};
+
 const upload = multer({ storage: storageForImages });
 
 module.exports = {
@@ -72,5 +92,6 @@ module.exports = {
 	unknownEndpoint,
 	errorHandler,
 	serverErrorHandler,
+	parseJSON,
 	upload
 };

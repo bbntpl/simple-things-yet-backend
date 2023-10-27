@@ -5,8 +5,7 @@ const { body, validationResult } = require('express-validator');
 const Author = require('../models/author');
 const { SECRET_KEY } = require('../utils/config');
 
-const { hasImageExistsInGridFS } = require('./reusables');
-const ImageFile = require('../models/image-file');
+const { getImageFileIdForUpdate } = require('./reusables');
 
 exports.validateEmail = [
 	body('email')
@@ -16,10 +15,7 @@ exports.validateEmail = [
 ];
 
 exports.validateAuthor = [
-	body('email')
-		.trim()
-		.isEmail()
-		.withMessage('Invalid email'),
+	...this.validateEmail,
 	body('username')
 		.isLength({ min: 4, max: 20 })
 		.withMessage('Username must be between 4 and 20 characters')
@@ -38,34 +34,10 @@ exports.authorImageUpdate = async (req, res, next) => {
 		}
 
 		if (req.file && req.file.id) {
-			const doesCurrentImageExists = await hasImageExistsInGridFS(author.imageFile);
-			const doesImageAsReplacementExists = await hasImageExistsInGridFS(req.body?.imageFile);
-			let newImageFileId;
-
-			// If both IDs are not equal and uploaded is an existing image, then replace the current image with an
-			// existing image from db	
-			if (req.body?.imageFile
-				&& author.imageFile !== req.body.imageFile
-				&& doesImageAsReplacementExists) {
-				newImageFileId = req.body.imageFile;
-			} else if (doesCurrentImageExists) {
-				newImageFileId = req.file.id;
-			} else {
-				const newImageFile = new ImageFile({
-					fileType: req.file.mimetype,
-					fileName: req.file.originalname,
-					size: req.file.size,
-					referencedDocs: [author.id],
-					_id: req.file.id,
-					...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
-				});
-				newImageFileId = newImageFile._id;
-				newImageFile.save();
-			}
-
+			const imageFileIdForUpdate = await getImageFileIdForUpdate(req, author);
 			const updatedAuthor = await Author.findByIdAndUpdate(
 				author.id,
-				{ imageFile: newImageFileId },
+				{ imageFile: imageFileIdForUpdate },
 				{ new: true }
 			);
 

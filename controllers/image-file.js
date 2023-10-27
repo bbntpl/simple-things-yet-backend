@@ -1,8 +1,65 @@
+const { body, validationResult } = require('express-validator');
 const Author = require('../models/author');
 const Blog = require('../models/blog');
 const Category = require('../models/category');
 const ImageFile = require('../models/image-file');
 const { deleteImageFromGridFS } = require('./reusables');
+
+exports.validateCreditInfo = [
+	body('credit.sourceName')
+		.optional()
+		.isString()
+		.withMessage('Credit names must be strings'),
+	body('credit.authorName')
+		.optional()
+		.isString()
+		.withMessage('Credit names must be strings'),
+	body('credit.sourceURL')
+		.optional()
+		.isURL()
+		.withMessage('Credit URL must be valid URLs'),
+	body('credit.authorURL')
+		.optional()
+		.isURL()
+		.withMessage('Credit names must be valid URLs')
+];
+// exports.validateCreditInfo = [
+// 	body('credit')
+// 		.isJSON()
+// 		.withMessage('Must be a stringified JSON')
+// 		.custom((value) => {
+// 			try {
+// 				const parsedCredit = JSON.parse(value);
+// 				const errors = {};
+
+// 				const fieldNames = ['authorName', 'sourceName'];
+// 				const fieldUrls = ['authorURL', 'sourceURL'];
+
+// 				fieldNames.forEach(name => {
+// 					if (typeof parsedCredit[name] !== 'string') {
+// 						errors[name] = `${name} must be a string`;
+// 					}
+// 				});
+
+// 				fieldUrls.forEach(url => {
+// 					const urlRegex = /^(https?|ftp|smtp):\/\/[^ "]+$/;
+// 					if (!urlRegex.test(parsedCredit[url])) {
+// 						errors[url] = `${url} must be a valid URL`;
+// 					}
+// 				});
+
+// 				// If there are errors, throw them
+// 				if (Object.keys(errors).length > 0) {
+// 					return errors;
+// 				}
+
+// 				// If all validations pass, return true
+// 				return true;
+// 			} catch (error) {
+// 				throw new Error('Invalid object format');
+// 			}
+// 		}),
+// ];
 
 exports.imageFiles = async (_req, res, next) => {
 	try {
@@ -24,16 +81,39 @@ exports.imageFileFetch = async (req, res, next) => {
 };
 
 exports.imageFileCreate = async (req, res, next) => {
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+
 	try {
 		const newImageFileDoc = new ImageFile({
 			_id: req.file.id,
 			size: req.file.size,
 			fileName: req.file.originalname,
 			fileType: req.file.mimetype,
-			...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
+			...(req.body.credit ? { credit: req.body.credit } : {})
 		});
-		newImageFileDoc.save();
+		await newImageFileDoc.save();
 		res.status(201).json(newImageFileDoc);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.imageFileUpdate = async (req, res, next) => {
+	const { id } = req.params;
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+
+	try {
+		const imageFileDocToUpdate = await ImageFile.findById(id);
+
+		imageFileDocToUpdate.credit = req.body?.credit;
+		await imageFileDocToUpdate.save();
+		res.json(imageFileDocToUpdate);
 	} catch (err) {
 		next(err);
 	}

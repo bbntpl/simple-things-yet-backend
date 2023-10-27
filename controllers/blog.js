@@ -5,15 +5,13 @@ const { default: slugify } = require('slugify');
 const Blog = require('../models/blog');
 const Category = require('../models/category');
 const Tag = require('../models/tag');
+const ImageFile = require('../models/image-file');
 const {
 	handlePagination,
 	handleFiltering,
 	handleSorting
 } = require('../utils/query-handlers');
-const {
-	hasImageExistsInGridFS, getFilesnamesFromGridFS
-} = require('./reusables');
-const ImageFile = require('../models/image-file');
+const { getImageFileIdForUpdate } = require('./reusables');
 const { imageFileCreateAndSetRefId } = require('./image-file');
 
 const insertBlogToTag = async (tagId, blogId) => {
@@ -61,10 +59,8 @@ exports.blogCreate = async (req, res, next) => {
 
 
 		if (req.file) {
-			const doesFileExistsAlready = await hasImageExistsInGridFS(req.file.id);
-			const filesnames = await getFilesnamesFromGridFS(req.file.id);
-			console.log(doesFileExistsAlready, filesnames);
-			if (doesFileExistsAlready) {
+			const doesImageFileDocExists = await ImageFile.findById(req.body.imageFile);
+			if (doesImageFileDocExists) {
 				blog.imageFile = req.file.id;
 			} else {
 				await imageFileCreateAndSetRefId(req, blog);
@@ -276,32 +272,9 @@ exports.blogImageUpdate = async (req, res, next) => {
 		}
 
 		if (req.file && req.file.id) {
-			const doesCurrentImageExists = await hasImageExistsInGridFS(blogToUpdate.imageFile?.id);
-			const doesImageAsReplacementExists = await hasImageExistsInGridFS(req.body?.imageFile);
-			let newImageFileId;
+			const imageFileIdForUpdate = await getImageFileIdForUpdate(req, blogToUpdate);
 
-			// If both IDs are not equal and uploaded is an existing image, then replace the current image with an
-			// existing image from db	
-			if (req.body?.imageFile
-				&& blogToUpdate.imageFile !== req.body.imageFile
-				&& doesImageAsReplacementExists) {
-				newImageFileId = req.body.imageFile;
-			} else if (doesCurrentImageExists) {
-				newImageFileId = req.file.id;
-			} else {
-				const newImageFile = new ImageFile({
-					fileType: req.file.mimetype,
-					fileName: req.file.originalname,
-					size: req.file.size,
-					referencedDocs: [blogToUpdate.id],
-					_id: req.file.id,
-					...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
-				});
-				newImageFileId = newImageFile._id;
-				newImageFile.save();
-			}
-
-			blogToUpdate.imageFile = newImageFileId;
+			blogToUpdate.imageFile = imageFileIdForUpdate;
 			await blogToUpdate.save();
 			res.status(200).json(blogToUpdate);
 		} else {

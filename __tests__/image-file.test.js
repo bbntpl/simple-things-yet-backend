@@ -13,10 +13,11 @@ const {
 	sampleAuthor1,
 	sampleImageCredit,
 	sampleBlog1,
-	sampleCategory1
+	sampleCategory1,
+	sampleInvalidImageCredit
 } = require('../utils/tests/dataset');
 const clearUploads = require('../utils/clearUploads');
-const { hasImageExistsInGridFS, deleteImageFromGridFS } = require('../controllers/reusables');
+const { hasImageInGridFS } = require('../controllers/reusables');
 const ImageFile = require('../models/image-file');
 const Blog = require('../models/blog');
 const Category = require('../models/category');
@@ -27,6 +28,7 @@ const request = supertest(app);
 
 beforeAll(async () => {
 	server = await initApp();
+	token = await loginAuthor(request, sampleAuthor1);
 });
 
 beforeEach(async () => {
@@ -34,9 +36,6 @@ beforeEach(async () => {
 	await Blog.deleteMany({});
 	await Category.deleteMany({});
 	await clearUploads(mongoose.connection);
-
-	token = null;
-	token = await loginAuthor(request, sampleAuthor1);
 });
 
 const getImageFileDocs = async () => {
@@ -60,6 +59,20 @@ const createImageDoc = async (imagePath, values = {}) => {
 		.field('credit', stringifiedValues)
 		.set('Authorization', `Bearer ${token}`)
 		.expect(201);
+
+	return uploadImageResponse;
+};
+
+
+const updateImageDoc = async (imageId, values = {}) => {
+	const stringifiedValues = JSON.stringify(values);
+	const uploadImageResponse = await request
+		.put(`/api/images/${imageId}/update`)
+		.send({
+			credit: stringifiedValues,
+		})
+		.set('Authorization', `Bearer ${token}`)
+		.expect(200);
 
 	return uploadImageResponse;
 };
@@ -116,7 +129,7 @@ describe('creation of image file doc', () => {
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 		const uploadResponse = await createImageDoc(filePath);
 
-		const isThereAnImageFromDb = hasImageExistsInGridFS(uploadResponse.body.id);
+		const isThereAnImageFromDb = hasImageInGridFS(uploadResponse.body.id);
 		expect(isThereAnImageFromDb).toBeTruthy();
 	});
 
@@ -127,12 +140,9 @@ describe('creation of image file doc', () => {
 		});
 		expect(newBlog.body.imageFile).toBeDefined();
 		const fetchedBlogImage = await getImageFileDoc(newBlog.body.imageFile);
-		console.log(fetchedBlogImage.body);
-		expect(fetchedBlogImage.body).toHaveProperty([
-			'id', 'size', 'fileName', 'fileType'
-		]);
+
 		expect(fetchedBlogImage.body.referencedDocs).toHaveLength(1);
-		expect(fetchedBlogImage.body.referencedDocs).toContain(newBlog.body.imageFile);
+		expect(fetchedBlogImage.body.referencedDocs).toContain(newBlog.body.id);
 		expect(fetchedBlogImage.body.id).toEqual(newBlog.body.imageFile);
 	});
 
@@ -144,11 +154,9 @@ describe('creation of image file doc', () => {
 		expect(newCategory.body.imageFile).toBeDefined();
 
 		const fetchedCategoryImage = await getImageFileDoc(newCategory.body.imageFile);
-		expect(fetchedCategoryImage.body).toHaveProperty([
-			'id', 'size', 'fileName', 'fileType'
-		]);
+
 		expect(fetchedCategoryImage.body.referencedDocs).toHaveLength(1);
-		expect(fetchedCategoryImage.body.referencedDocs).toContain(newCategory.body.imageFile);
+		expect(fetchedCategoryImage.body.referencedDocs).toContain(newCategory.body.id);
 		expect(fetchedCategoryImage.body.id).toEqual(newCategory.body.imageFile);
 	});
 
@@ -172,15 +180,31 @@ describe('creation of image file doc', () => {
 	test('should have valid optional values by uploading it if added manually', async () => {
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 		const uploadResponse = await createImageDoc(filePath, sampleImageCredit);
-
+		const credit = uploadResponse.body.credit;
 
 		expect(uploadResponse.body.fileName).toEqual('image.png');
 		expect(uploadResponse.body.fileType).toEqual('image/png');
 		expect(typeof uploadResponse.body.size).toBe('number');
-		expect(uploadResponse.body.credit.authorName).toEqual(sampleImageCredit.authorName);
-		expect(uploadResponse.body.credit.authorLink).toEqual(sampleImageCredit.authorLink);
-		expect(uploadResponse.body.credit.sourceName).toEqual(sampleImageCredit.sourceName);
-		expect(uploadResponse.body.credit.sourceLink).toEqual(sampleImageCredit.sourceLink);
+		expect(credit.authorName).toEqual(sampleImageCredit.authorName);
+		expect(credit.authorURL).toEqual(sampleImageCredit.authorURL);
+		expect(credit.sourceName).toEqual(sampleImageCredit.sourceName);
+		expect(credit.sourceURL).toEqual(sampleImageCredit.sourceURL);
+	});
+
+	test('should respond with 400 if credit values are invalid', async () => {
+		const imagePath = path.join(__dirname, '../images/dbdiagram.png');
+
+		const stringifiedValues = JSON.stringify(sampleInvalidImageCredit);
+		const uploadImageResponse = await request
+			.post('/api/images/upload')
+			.attach('uploadImage', imagePath, { filename: 'image.png' })
+			.field('credit', stringifiedValues)
+			.set('Authorization', `Bearer ${token}`)
+			.expect(400);
+
+
+		expect(uploadImageResponse.body.errors).toBeDefined();
+		expect(uploadImageResponse.body.errors).toHaveLength(4);
 	});
 });
 
@@ -211,11 +235,8 @@ describe('deletion of image file doc', () => {
 		const imageFileDocsAtEnd = await getImageFileDocs();
 		expect(imageFileDocsAtEnd.body).toHaveLength(0);
 
-		await expect(deleteImageFromGridFS(uploadResponse.body.id))
-			.resolves.not.toThrow();
-
-		const isThereAnImageFromDb = await hasImageExistsInGridFS(uploadResponse.body.id);
-		expect(isThereAnImageFromDb).toBeTruthy();
+		await expect(hasImageInGridFS(uploadResponse.body.id))
+			.resolves.toBeFalsy();
 	});
 
 	test('should successfully remove the image from blog document', async () => {
@@ -281,6 +302,52 @@ describe('deletion of image file doc', () => {
 			.expect('Content-Type', /application\/json/)
 			.expect(200);
 		expect(categoryFetchResponse.body.imageFile).toEqual(null);
+	});
+});
+
+describe('update of image file doc', () => {
+	beforeEach(async () => {
+		await ImageFile.deleteMany({});
+		await clearUploads(mongoose.connection);
+
+		const filePath = path.join(__dirname, '../images/dbdiagram.png');
+		await createImageDoc(filePath, sampleImageCredit);
+	});
+
+	test('should respond with 400 after receiving invalid values for credit info', async () => {
+		const imageFileDocsAtStart = await getImageFileDocs();
+		const initialImageFileDoc = imageFileDocsAtStart.body[0];
+
+		const stringifiedValues = JSON.stringify(sampleInvalidImageCredit);
+
+		const updateResponse = await request
+			.put(`/api/images/${initialImageFileDoc.id}/update`)
+			.send({
+				credit: stringifiedValues,
+			})
+			.set('Authorization', `Bearer ${token}`)
+			.expect(400);
+
+		expect(updateResponse.body.errors).toBeDefined();
+		expect(updateResponse.body.errors).toHaveLength(4);
+	});
+
+	test('should successfully update credit info', async () => {
+		const imageFileDocsAtStart = await getImageFileDocs();
+		const initialImageFileDoc = imageFileDocsAtStart.body[0];
+		const newCreditInfo = {
+			sourceName: 'hola mama',
+			authorName: 'chao chao',
+			sourceURL: 'https://holamama.com',
+			authorURL: 'https://chaochao.net'
+		};
+
+		const updateResponse = await updateImageDoc(
+			initialImageFileDoc.id,
+			newCreditInfo
+		);
+
+		expect(updateResponse.body.credit).toMatchObject(newCreditInfo);
 	});
 });
 

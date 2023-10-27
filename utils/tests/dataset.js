@@ -23,9 +23,16 @@ const baseBlogDetails = {
 
 exports.sampleImageCredit = {
 	authorName: 'First Author',
-	authorLink: 'https://github.com/firztauthor',
+	authorURL: 'https://github.com/firztauthor',
 	sourceName: 'Unsplash',
-	sourceLink: 'https://unsplash.com'
+	sourceURL: 'https://unsplash.com'
+};
+
+exports.sampleInvalidImageCredit = {
+	sourceName: 12345,
+	authorName: 67890,
+	sourceURL: 'hi mom',
+	authorURL: 'bye mom'
 };
 
 exports.sampleAuthor1 = {
