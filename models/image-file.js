@@ -26,7 +26,7 @@ const imageFileSchema = new mongoose.Schema({
 			type: String,
 			default: null,
 		},
-		authorLink: {
+		authorURL: {
 			type: String,
 			default: null,
 		},
@@ -34,7 +34,7 @@ const imageFileSchema = new mongoose.Schema({
 			type: String,
 			default: null,
 		},
-		sourceLink: {
+		sourceURL: {
 			type: String,
 			default: null,
 		},
