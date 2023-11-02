@@ -114,7 +114,6 @@ exports.commentCreate = async (req, res, next) => {
 		const savedComment = await createCommentOrReply(res, req, false);
 		res.status(201).json(savedComment);
 	} catch (err) {
-		console.log('Error:', err);
 		next(err);
 	}
 };
@@ -124,7 +123,6 @@ exports.replyCreate = async (req, res, next) => {
 		const savedReply = await createCommentOrReply(res, req, true);
 		res.status(201).json(savedReply);
 	} catch (err) {
-		console.log('Error:', err);
 		next(err);
 	}
 };
@@ -151,7 +149,6 @@ const updateCommentOrReply = async (isReply, req, res, next) => {
 
 		res.json(updatedComment);
 	} catch (err) {
-		console.log('Error:', err);
 		next(err);
 	}
 };
@@ -203,7 +200,6 @@ const deleteCommentOrReply = async (isReply, req, res, next) => {
 			})
 			.catch(err => next(err));
 	} catch (err) {
-		console.log('Error:', err);
 		next(err);
 	}
 };

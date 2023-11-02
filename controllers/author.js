@@ -102,7 +102,7 @@ exports.authorFetch = async (req, res, next) => {
 exports.authorInfoFetch = async (req, res, next) => {
 	try {
 		const author = await Author.findOne({}).
-			select('-email -username -createdAt');
+			select('-email -username -createdAt -updatedAt');
 
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });

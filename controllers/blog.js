@@ -43,14 +43,14 @@ exports.blogCreate = async (req, res, next) => {
 		const { publishAction } = req.params;
 
 		if (!['save', 'publish'].includes(publishAction)) {
-			return res.status(400).json({ error: 'Invalid publishAction' });
+			return res.status(400).json({ error: 'Invalid write action' });
 		}
 
 		blog = new Blog({
 			title,
 			content,
 			// null cannot be passed directly while image upload is necessary for blog create
-			// So, I'm passing 'NONE' instead, then convert it to null
+			// So'NONE' will be passed instead instead, then convert it to null
 			category: category === 'NONE' ? null : category,
 			author: req.user._id,
 			tags: tags || [],

@@ -215,7 +215,6 @@ describe('update of viewer', () => {
 		const updatedViewer = {
 			username: viewer.username,
 			name: 'IAMTHEDANGER',
-			passwordHash: viewer.passwordHash
 		};
 
 		await request.put(`/api/viewers/${viewer._id}/update`)
@@ -264,7 +263,7 @@ describe('password changes in viewer doc', () => {
 		const viewerPwdToUpdate = {
 			currentPassword: sampleViewer1.password,
 			newPassword: 'qwerty123',
-			confirmPassword: 'qwerty123'
+			confirmNewPassword: 'qwerty123'
 		};
 
 		await request.put(`/api/viewers/${viewer._id}/change-password`)
@@ -286,7 +285,7 @@ describe('password changes in viewer doc', () => {
 		const updatedViewer = {
 			currentPassword: 'wrongpasswordyup',
 			newPassword: 'qwerty123',
-			confirmPassword: 'qwerty123'
+			confirmNewPassword: 'qwerty123'
 		};
 
 		const response = await request.put(`/api/viewers/${viewer._id}/change-password`)

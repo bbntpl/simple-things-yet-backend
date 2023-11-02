@@ -123,7 +123,7 @@ exports.viewers = async (req, res, next) => {
 };
 
 exports.viewerUpdate = async (req, res, next) => {
-	const { name, username, passwordHash } = req.body;
+	const { name, username } = req.body;
 
 	try {
 		const existingViewer = await Viewer.findById(req.params.id);
@@ -135,7 +135,6 @@ exports.viewerUpdate = async (req, res, next) => {
 		const updatedViewer = {
 			name,
 			username,
-			passwordHash
 		};
 
 		const viewer = await Viewer.findByIdAndUpdate(
@@ -167,10 +166,10 @@ exports.viewerPasswordConfirm = async (req, res, next) => {
 };
 
 exports.viewerPasswordChange = async (req, res, next) => {
-	const { currentPassword, newPassword, confirmPassword } = req.body;
+	const { currentPassword, newPassword, confirmNewPassword } = req.body;
 
 	try {
-		if (newPassword !== confirmPassword) {
+		if (newPassword !== confirmNewPassword) {
 			return res.status(400).json({ error: 'Password confirmation does not match' });
 		}
 
