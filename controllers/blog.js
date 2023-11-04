@@ -50,8 +50,8 @@ exports.blogCreate = async (req, res, next) => {
 			title,
 			content,
 			// null cannot be passed directly while image upload is necessary for blog create
-			// So'NONE' will be passed instead instead, then convert it to null
-			category: category === 'NONE' ? null : category,
+			// So'NULL' will be passed instead instead, then convert it to null
+			category,
 			author: req.user._id,
 			tags: tags || [],
 			isPrivate: isPrivate,
@@ -189,10 +189,10 @@ exports.publishedBlogFetch = async (req, res, next) => {
 			isPrivate: false,
 			isPublished: true,
 			...filters,
-		})
-			.populate('category')
-			.populate('tags')
-			.populate('comments');
+		});
+		// .populate('category')
+		// .populate('tags')
+		// .populate('comments');
 		if (!blog) {
 			return res.status(404).json({ message: 'Blog not found' });
 		}
@@ -285,6 +285,29 @@ exports.blogImageUpdate = async (req, res, next) => {
 	}
 };
 
+exports.blogLikeUpdate = async (req, res, next) => {
+	const { blogId, userId } = req.params;
+	try {
+		const blogToUpdate = await Blog.findById(blogId);
+
+		if (!blogToUpdate) {
+			return res.status(404).json({ error: 'Blog not found' });
+		}
+
+		const hasUserLikedTheBlog = blogToUpdate.likes.includes(userId);
+		if (hasUserLikedTheBlog) {
+			blogToUpdate.likes = blogToUpdate.likes.filter(id => id === userId);
+		} else {
+			blogToUpdate.likes.push(userId);
+		}
+
+		blogToUpdate.save();
+		res.json(blogToUpdate);
+	} catch (error) {
+		next(error);
+	}
+};
+
 exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
 
@@ -310,10 +333,8 @@ exports.blogUpdate = async (req, res, next) => {
 			return res.status(404).json({ error: 'Blog not found' });
 		}
 
-		if (
-			blogToUpdate.author.toString() !== req.user._id.toString() &&
-			req.originalUrl.includes('authors-only')
-		) {
+		// Respond with unauthorized if author is not the blog author		
+		if (blogToUpdate.author.toString() !== req.user._id.toString()) {
 			return res.status(403).json({ error: 'Unauthorized' });
 		}
 
@@ -322,10 +343,8 @@ exports.blogUpdate = async (req, res, next) => {
 		}
 
 		// Update one to one ref for both blogs and tags/categories
-		if (req.originalUrl.includes('authors-only')) {
-			await blogTagsUpdate(blogToUpdate, req.body);
-			await blogCategoryUpdate(blogToUpdate, req.body);
-		}
+		await blogTagsUpdate(blogToUpdate, req.body);
+		await blogCategoryUpdate(blogToUpdate, req.body);
 
 		const authorId = blogPropsToUpdate['author']
 			? blogPropsToUpdate.author.id

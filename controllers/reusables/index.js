@@ -3,19 +3,21 @@ const getGfs = require('../../utils/gfs');
 const ImageFile = require('../../models/image-file');
 
 exports.getImageFileIdForUpdate = async (req, doc) => {
-	// const doesCurrentImageExists = await this.hasImageInGridFS(doc.imageFile);
-	const doesImageAsReplacementExists = await this.hasImageInGridFS(req.body.imageFile);
-	const doesImageFileDocAsReplacementExists = await ImageFile.findById(req.body.imageFile);
-	// const doesCurrentImageFileDocExists = await ImageFile.findById(doc.imageFile);
+	const doesImageAsReplacementExists = await this.hasImageInGridFS(req.body.existingImageId);
+	const doesImageFileDocAsReplacementExists = await ImageFile.findById(req.body.existingImageId);
 	let newImageFileId;
+	// If received imageFile from body and current doc imageFile ID is not equal then
+	// the received imageFile is different which intends to modify the doc imageFile ID
+	// with the imageId of an existing one
 
-	// If both IDs are not equal and uploaded is an existing image, then replace the current image with an
-	// existing image from db	
-	if (doc.imageFile !== req.body.imageFile
+	// If the uploaded file is an existing image, then replace the current image with an
+	// existing image by settings its image ref with the new image ID
+	if (doc.imageFile !== req.body.existingImageId
 		&& doesImageAsReplacementExists
 		&& doesImageFileDocAsReplacementExists) {
 		newImageFileId = req.body.imageFile;
-	} else if (doc.imageFile !== req.body.imageFile
+		// Otherwise, create a new image file doc using the uploaded image file
+	} else if (req.body.existingImageId === null
 		&& !doesImageFileDocAsReplacementExists) {
 		const newImageFile = new ImageFile({
 			fileType: req.file.mimetype,
@@ -28,7 +30,7 @@ exports.getImageFileIdForUpdate = async (req, doc) => {
 		newImageFileId = newImageFile._id;
 		newImageFile.save();
 	} else {
-		newImageFileId = req.file.id;
+		newImageFileId = doc.imageFile;
 	}
 
 	return newImageFileId;

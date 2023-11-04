@@ -1,5 +1,9 @@
 const express = require('express');
-const { authenticateUser, upload, parseJSON } = require('../utils/middleware');
+const {
+	authenticateUser,
+	upload,
+	transformReqBodyValues
+} = require('../utils/middleware');
 const {
 	imageFiles,
 	imageFileFetch,
@@ -22,14 +26,14 @@ router.get('/:id/source', resourceImageFetch);
 router.post('/upload',
 	authenticateUser(Author),
 	upload.single('uploadImage'),
-	parseJSON,
+	transformReqBodyValues,
 	validateCreditInfo,
 	imageFileCreate
 );
 
 router.put('/:id/update',
 	authenticateUser(Author),
-	parseJSON,
+	transformReqBodyValues,
 	validateCreditInfo,
 	imageFileUpdate
 );

@@ -32,9 +32,10 @@ exports.authorImageUpdate = async (req, res, next) => {
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });
 		}
-
+		console.log(req.file, req.body);
 		if (req.file && req.file.id) {
 			const imageFileIdForUpdate = await getImageFileIdForUpdate(req, author);
+
 			const updatedAuthor = await Author.findByIdAndUpdate(
 				author.id,
 				{ imageFile: imageFileIdForUpdate },
@@ -47,7 +48,12 @@ exports.authorImageUpdate = async (req, res, next) => {
 
 			res.status(200).json(updatedAuthor);
 		} else {
-			res.status(400).json({ message: 'Uploaded author picture not found' });
+			const updatedAuthor = await Author.findByIdAndUpdate(
+				author.id,
+				{ imageFile: req.body.existingImageId || null },
+				{ new: true }
+			);
+			res.status(200).json(updatedAuthor);
 		}
 	} catch (err) {
 		next(err);
@@ -73,8 +79,10 @@ exports.authorUpdate = async (req, res, next) => {
 		const updatedAuthor = await Author.findByIdAndUpdate(
 			author.id,
 			updateData,
-			{ new: true }
-		);
+			{
+				new: true,
+				select: '-username -createdAt -updatedAt'
+			});
 
 		if (!updatedAuthor) {
 			return res.status(404).json({ message: 'Author not found' });
@@ -88,7 +96,7 @@ exports.authorUpdate = async (req, res, next) => {
 
 exports.authorFetch = async (req, res, next) => {
 	try {
-		const author = await Author.findOne({}).populate('imageFile');
+		const author = await Author.findOne({});
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });
 		}
@@ -101,8 +109,8 @@ exports.authorFetch = async (req, res, next) => {
 
 exports.authorInfoFetch = async (req, res, next) => {
 	try {
-		const author = await Author.findOne({}).
-			select('-email -username -createdAt -updatedAt');
+		const author = await Author.findOne({})
+			.select('-username -createdAt -updatedAt');
 
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });
@@ -179,8 +187,8 @@ exports.authorLogin = async (req, res, next) => {
 		const token = jwt.sign(
 			authorForToken,
 			SECRET_KEY,
-			// expires in 2 hours
-			{ expiresIn: '2d' }
+			// expires in 7 days
+			{ expiresIn: '7d' }
 		);
 
 		res.json({

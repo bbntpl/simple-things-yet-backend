@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { authenticateUser, upload } = require('../utils/middleware');
+const { authenticateUser, upload, transformReqBodyValues } = require('../utils/middleware');
 
 const {
 	authorImageUpdate,
@@ -33,6 +33,7 @@ router.put('/update',
 router.put('/update/image',
 	authenticateUser(Author),
 	upload.single('authorImage'),
+	transformReqBodyValues,
 	authorImageUpdate
 );
 

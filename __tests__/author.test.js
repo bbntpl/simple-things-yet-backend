@@ -76,6 +76,7 @@ describe('View author', () => {
 		const updatedAuthorResponse = await request
 			.put('/api/author/update/image')
 			.attach('authorImage', filePath, { filename: 'image.png' })
+			.field('existingImageId', 'NULL')
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 		expect(updatedAuthorResponse.body.imageFile).toBeDefined();
@@ -200,6 +201,7 @@ describe('Update of author', () => {
 		const updatedAuthorImageResponse = await request
 			.put('/api/author/update/image')
 			.attach('authorImage', filePath, { filename: 'image.png' })
+			.field('existingImageId', 'NULL')
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 

@@ -64,11 +64,16 @@ const authenticateUser = (UserModel) => async (req, res, next) => {
 	}
 };
 
-const parseJSON = (req, _res, next) => {
+const transformReqBodyValues = (req, _res, next) => {
 	try {
 		if (Object.keys(req.body).length > 0) {
 			for (const [key, value] of Object.entries(req.body)) {
 				try {
+					if (value === 'NULL') {
+						req.body[key] = null;
+						continue;
+					}
+
 					const parsedValue = JSON.parse(value);
 					req.body[key] = parsedValue;
 				} catch {
@@ -92,6 +97,6 @@ module.exports = {
 	unknownEndpoint,
 	errorHandler,
 	serverErrorHandler,
-	parseJSON,
+	transformReqBodyValues,
 	upload
 };

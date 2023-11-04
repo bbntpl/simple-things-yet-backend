@@ -179,7 +179,7 @@ const postBlog = async (api, data) => {
 		.field('tags', blog.tags)
 		.field('isPrivate', blog.isPrivate)
 		.field('likes', blog.likes)
-		.field('category', blog.category === null ? 'NONE' : blog.category)
+		.field('category', blog.category === null ? 'NULL' : blog.category)
 		.attach('blogImage', filePath, 'image.png')
 		.set('Authorization', `Bearer ${token}`)
 		.expect('Content-Type', /application\/json/)

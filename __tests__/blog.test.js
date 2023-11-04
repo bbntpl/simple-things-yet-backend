@@ -279,7 +279,7 @@ describe('update of blog', () => {
 		};
 
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/`)
 			.send(updatedBlog)
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -297,7 +297,7 @@ describe('update of blog', () => {
 
 		const filePath = path.join(__dirname, '../images/dbdiagram.png');
 		const updatedBlogImageResponse = await request
-			.put(`/api/blogs/${newBlog.body.id}/image-update/authors-only`)
+			.put(`/api/blogs/${newBlog.body.id}/image-update/`)
 			.attach('blogImage', filePath, { filename: 'image.png' })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -322,7 +322,7 @@ describe('update of blog', () => {
 		};
 
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/`)
 			.send(updatedBlog)
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -341,7 +341,7 @@ describe('update of blog', () => {
 
 		// Update the blog to add tag association
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/`)
 			.send({
 				...blogToUpdate,
 				tags: [
@@ -371,7 +371,7 @@ describe('update of blog', () => {
 
 		// Update the blog to update the category id in the blog
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/`)
 			.send({
 				...blogToUpdate,
 				category: category._id
@@ -403,7 +403,7 @@ describe('update of blog', () => {
 
 		// Update the blog to remove the tag association
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish`)
 			.send({ ...blogToUpdate.toObject(), tags: [] })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -422,7 +422,7 @@ describe('update of blog', () => {
 
 		// Update the blog by toggling the private property
 		await request
-			.put(`/api/blogs/${blogToUpdate.id}/publish/authors-only`)
+			.put(`/api/blogs/${blogToUpdate.id}/publish/`)
 			.send({ ...blogToUpdate, isPrivate: !blogToUpdate.isPrivate })
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
@@ -435,7 +435,6 @@ describe('update of blog', () => {
 describe('liking a blog feature', () => {
 	let blog;
 	let viewer;
-	let blogToUpdate;
 
 	beforeEach(async () => {
 		await deleteDbsForBlogTests();
@@ -446,80 +445,31 @@ describe('liking a blog feature', () => {
 		// initialize blog and viewer every test
 		blog = await Blog.findOne({});
 		viewer = await Viewer.findOne({});
-		blogToUpdate = {
-			title: blog.title,
-			content: blog.content,
-			author: blog.author,
-			isPrivate: blog.isPrivate,
-			createdAt: blog.createdAt,
-			updatedAt: blog.updatedAt,
-			comments: blog.comments,
-			tags: blog.tags
-		};
 	});
 
 	test('should allow user/viewer to like a blog', async () => {
-		await request.put(`/api/blogs/${blog._id}`)
-			.send({
-				...blogToUpdate, likes: [
-					...blog.likes, viewer._id
-				]
-			})
+		await request.put(`/api/blogs/${blog._id}/likes/${viewer._id}`)
+			.send({})
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
 		const updatedBlog = await Blog.findOne({});
 		expect(updatedBlog.likes.map(String)).toContain(viewer._id.toString());
-	});
-
-	test('should only allow user/viewer to like a blog once', async () => {
-		await request.put(`/api/blogs/${blog._id}`)
-			.send({
-				...blogToUpdate, likes: [
-					...blog.likes, viewer._id
-				]
-			})
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
-
-		const updatedBlog = await Blog.findOne({});
-		expect(updatedBlog.likes.map(String)).toContain(viewer._id.toString());
-
-		// attempt for 2nd like
-		await request.put(`/api/blogs/${blog._id}`)
-			.send({
-				...blogToUpdate, likes: [
-					...blog.likes, viewer._id
-				]
-			})
-			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
-
-		const updatedBlogForThe2ndTime = await Blog.findOne({});
-		expect(updatedBlogForThe2ndTime.likes).toHaveLength(1);
 	});
 
 	test('should allow a user/viewer to unlike a blog that was liked prevoiusly', async () => {
-		await request.put(`/api/blogs/${blog._id}`)
-			.send({
-				...blogToUpdate, likes: [
-					...blog.likes, viewer._id
-				]
-			})
+		await request.put(`/api/blogs/${blog._id}/likes/${viewer._id}`)
+			.send({})
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
 		const updatedBlog = await Blog.findOne({});
 		expect(updatedBlog.likes.map(String)).toContain(viewer._id.toString());
+		expect(updatedBlog.likes).toHaveLength(1);
 
-		const filteredLikes = updatedBlog
-			.likes.filter(id => !id.equals(viewer._id));
-
-		// attempt for 2nd like
-		await request.put(`/api/blogs/${blog._id}`)
-			.send({
-				...blogToUpdate, likes: filteredLikes
-			})
+		// Unlike the blog
+		await request.put(`/api/blogs/${blog._id}/likes/${viewer._id}`)
+			.send({})
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
@@ -531,12 +481,8 @@ describe('liking a blog feature', () => {
 
 	test('should contain the correct amount of likes by users/viewers', async () => {
 		const initialLikesCount = blog.likes.length;
-		await request.put(`/api/blogs/${blog._id}`)
-			.send({
-				...blogToUpdate, likes: [
-					...blog.likes, viewer._id
-				]
-			})
+		await request.put(`/api/blogs/${blog._id}/likes/${viewer._id}`)
+			.send({})
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
@@ -545,12 +491,8 @@ describe('liking a blog feature', () => {
 	});
 
 	test('should not allow unauthorized user/viewer to like a blog', async () => {
-		await request.put(`/api/blogs/${blog._id}`)
-			.send({
-				...blogToUpdate, likes: [
-					...blog.likes, viewer._id
-				]
-			})
+		await request.put(`/api/blogs/${blog._id}/likes/${viewer._id}`)
+			.send({})
 			.expect(401);
 	});
 });

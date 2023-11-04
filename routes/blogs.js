@@ -15,6 +15,7 @@ const {
 	totalPublishedBlogs,
 	totalUncategorizedPublishedBlogs,
 	publishedBlogFetch,
+	blogLikeUpdate,
 } = require('../controllers/blog');
 const Author = require('../models/author');
 const Viewer = require('../models/viewer');
@@ -47,20 +48,20 @@ router.post('/:publishAction',
 ); // for creating a new draft blog
 
 // Update an existing blog image by author
-router.put('/:id/image-update/authors-only',
+router.put('/:id/image-update',
 	authenticateUser(Author),
 	upload.single('blogImage'),
 	blogImageUpdate
 );
 
 // Update an existing blog by author
-router.put('/:id/:publishAction/authors-only',
+router.put('/:id/:publishAction',
 	authenticateUser(Author),
 	blogUpdate
 );
 
 // Indirect update of an existing blog based on user's interactions
-router.put('/:id', authenticateUser(Viewer), blogUpdate);
+router.put('/:blogId/likes/:userId', authenticateUser(Viewer), blogLikeUpdate);
 
 // Delete a blog
 router.delete('/:id', authenticateUser(Author), blogDelete);
