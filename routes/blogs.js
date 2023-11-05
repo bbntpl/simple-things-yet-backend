@@ -2,7 +2,8 @@ const express = require('express');
 
 const {
 	authenticateUser,
-	upload
+	upload,
+	transformReqBodyValues
 } = require('../utils/middleware');
 const {
 	blogCreate,
@@ -19,6 +20,7 @@ const {
 } = require('../controllers/blog');
 const Author = require('../models/author');
 const Viewer = require('../models/viewer');
+const { validateCreditInfo } = require('../controllers/image-file');
 
 const router = express.Router();
 
@@ -44,6 +46,8 @@ router.get('/:id', blogFetch);
 router.post('/:publishAction',
 	authenticateUser(Author),
 	upload.single('blogImage'),
+	transformReqBodyValues,
+	validateCreditInfo,
 	blogCreate
 ); // for creating a new draft blog
 
@@ -51,6 +55,8 @@ router.post('/:publishAction',
 router.put('/:id/image-update',
 	authenticateUser(Author),
 	upload.single('blogImage'),
+	transformReqBodyValues,
+	validateCreditInfo,
 	blogImageUpdate
 );
 

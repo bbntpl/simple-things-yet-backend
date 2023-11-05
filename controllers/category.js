@@ -1,13 +1,16 @@
-const { body, validationResult } = require('express-validator');
+const { body } = require('express-validator');
+const { default: mongoose } = require('mongoose');
 
 const Category = require('../models/category');
-const { getImageFileIdForUpdate } = require('./reusables');
+const {
+	getImageFileIdForUpdate,
+	validateRequestData
+} = require('./reusables');
 const {
 	handleSorting,
 	handleFiltering,
 	handlePagination
 } = require('../utils/query-handlers');
-const { default: mongoose } = require('mongoose');
 const { imageFileCreateAndSetRefId } = require('./image-file');
 const ImageFile = require('../models/image-file');
 
@@ -25,15 +28,11 @@ exports.validateCategory = [
 ];
 
 exports.categoryCreate = async (req, res, next) => {
-	const errors = validationResult(req);
-	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
-	}
+	validateRequestData(req, res);
 
 	const { name, description } = req.body;
 	try {
 		const isCategoryExists = await Category.findOne({ name });
-
 		if (isCategoryExists && String(isCategoryExists._id) !== String(req.params.id)) {
 			return res.status(400).json({ error: `Category ${req.body.name} exists already` });
 		}
@@ -42,12 +41,9 @@ exports.categoryCreate = async (req, res, next) => {
 		const newCategory = new Category(category);
 
 		if (req.file) {
-			const doesImageFileDocExists = await ImageFile.findById(req.body.imageFile);
-			if (doesImageFileDocExists) {
-				category.imageFile = req.file.id;
-			} else {
-				await imageFileCreateAndSetRefId(req, newCategory);
-			}
+			await imageFileCreateAndSetRefId(req, newCategory);
+		} else if (req.body.existingImageId) {
+			newCategory.imageFile = req.body.existingImageId;
 		}
 
 		await newCategory.save();
@@ -296,21 +292,34 @@ exports.categoryFetch = async (req, res, next) => {
 };
 
 exports.categoryImageUpdate = async (req, res, next) => {
+	validateRequestData(req, res);
+
 	const { id } = req.params;
 	try {
 		const categoryToUpdate = await Category.findById(id);
 		if (!categoryToUpdate) {
-			return res.status(404).json({ error: 'Category not found' });
+			return res.status(404).json({ message: 'Category not found' });
 		}
 
 		if (req.file && req.file.id) {
 			const imageFileIdForUpdate = await getImageFileIdForUpdate(req, categoryToUpdate);
-
 			categoryToUpdate.imageFile = imageFileIdForUpdate;
-			await categoryToUpdate.save();
+			categoryToUpdate.save();
+
 			res.status(200).json(categoryToUpdate);
 		} else {
-			return res.status(400).json({ message: 'Uploaded category image not found' });
+			categoryToUpdate.imageFile = req.body.existingImageId || null;
+			categoryToUpdate.save();
+
+			if (req.body?.credit) {
+				await ImageFile.findByIdAndUpdate(
+					req.body.existingImageId,
+					{ credit: req.body.credit },
+					{ new: true }
+				);
+			}
+
+			res.status(200).json(categoryToUpdate);
 		}
 	} catch (err) {
 		next(err);
@@ -318,13 +327,7 @@ exports.categoryImageUpdate = async (req, res, next) => {
 };
 
 exports.categoryUpdate = async (req, res, next) => {
-	const errors = validationResult(req);
-	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
-	}
-
 	const { id } = req.params;
-
 	try {
 		const updatedCategory = {
 			name: req.body.name,

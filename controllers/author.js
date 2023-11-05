@@ -32,10 +32,9 @@ exports.authorImageUpdate = async (req, res, next) => {
 		if (!author) {
 			return res.status(404).json({ message: 'Author not found' });
 		}
-		console.log(req.file, req.body);
+
 		if (req.file && req.file.id) {
 			const imageFileIdForUpdate = await getImageFileIdForUpdate(req, author);
-
 			const updatedAuthor = await Author.findByIdAndUpdate(
 				author.id,
 				{ imageFile: imageFileIdForUpdate },
@@ -53,6 +52,7 @@ exports.authorImageUpdate = async (req, res, next) => {
 				{ imageFile: req.body.existingImageId || null },
 				{ new: true }
 			);
+
 			res.status(200).json(updatedAuthor);
 		}
 	} catch (err) {

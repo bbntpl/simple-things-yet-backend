@@ -96,7 +96,7 @@ exports.imageFileCreateAndSetRefId = async (req, doc) => {
 		size: req.file.size,
 		referencedDocs: [doc._id],
 		_id: req.file.id,
-		...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
+		...(req.body.credit ? { credit: req.body.credit } : {})
 	});
 	doc.imageFile = newImageFile._id;
 	newImageFile.save();

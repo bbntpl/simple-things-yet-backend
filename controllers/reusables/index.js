@@ -1,31 +1,31 @@
 const { default: mongoose } = require('mongoose');
 const getGfs = require('../../utils/gfs');
 const ImageFile = require('../../models/image-file');
+const { validationResult } = require('express-validator');
+
+exports.validateRequestData = (req, res) => {
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+};
 
 exports.getImageFileIdForUpdate = async (req, doc) => {
 	const doesImageAsReplacementExists = await this.hasImageInGridFS(req.body.existingImageId);
 	const doesImageFileDocAsReplacementExists = await ImageFile.findById(req.body.existingImageId);
 	let newImageFileId;
-	// If received imageFile from body and current doc imageFile ID is not equal then
-	// the received imageFile is different which intends to modify the doc imageFile ID
-	// with the imageId of an existing one
-
-	// If the uploaded file is an existing image, then replace the current image with an
-	// existing image by settings its image ref with the new image ID
-	if (doc.imageFile !== req.body.existingImageId
-		&& doesImageAsReplacementExists
-		&& doesImageFileDocAsReplacementExists) {
-		newImageFileId = req.body.imageFile;
-		// Otherwise, create a new image file doc using the uploaded image file
-	} else if (req.body.existingImageId === null
-		&& !doesImageFileDocAsReplacementExists) {
+	console.log(req.body, doesImageAsReplacementExists, doesImageFileDocAsReplacementExists);
+	// Create a new image file doc using the uploaded image file
+	if (req.body.existingImageId === null
+		&& !doesImageFileDocAsReplacementExists
+		&& !doesImageAsReplacementExists) {
 		const newImageFile = new ImageFile({
 			fileType: req.file.mimetype,
 			fileName: req.file.originalname,
 			size: req.file.size,
 			referencedDocs: [doc.id],
 			_id: req.file.id,
-			...(req.body.credit ? { credit: JSON.parse(req.body.credit) } : {})
+			...(req.body?.credit ? { credit: req.body.credit } : {})
 		});
 		newImageFileId = newImageFile._id;
 		newImageFile.save();

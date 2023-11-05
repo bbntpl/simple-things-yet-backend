@@ -11,7 +11,7 @@ const {
 	handleFiltering,
 	handleSorting
 } = require('../utils/query-handlers');
-const { getImageFileIdForUpdate } = require('./reusables');
+const { getImageFileIdForUpdate, validateRequestData } = require('./reusables');
 const { imageFileCreateAndSetRefId } = require('./image-file');
 
 const insertBlogToTag = async (tagId, blogId) => {
@@ -34,7 +34,8 @@ exports.blogCreate = async (req, res, next) => {
 				.json({ error: 'The blog must have title and content' });
 		}
 
-		if (!req.file) {
+		// Either file or existingImageId must exists
+		if (!req.file && !req.body.existingImageId) {
 			return res.status(400)
 				.json({ error: 'The blog must have preview image' });
 		}
@@ -49,8 +50,8 @@ exports.blogCreate = async (req, res, next) => {
 		blog = new Blog({
 			title,
 			content,
-			// null cannot be passed directly while image upload is necessary for blog create
-			// So'NULL' will be passed instead instead, then convert it to null
+			// null object cannot be passed as request to backend while image upload is necessary for blog create
+			// So'NULL' will be passed instead, then convert it to null using a custom middleware
 			category,
 			author: req.user._id,
 			tags: tags || [],
@@ -59,12 +60,9 @@ exports.blogCreate = async (req, res, next) => {
 
 
 		if (req.file) {
-			const doesImageFileDocExists = await ImageFile.findById(req.body.imageFile);
-			if (doesImageFileDocExists) {
-				blog.imageFile = req.file.id;
-			} else {
-				await imageFileCreateAndSetRefId(req, blog);
-			}
+			await imageFileCreateAndSetRefId(req, blog);
+		} else if (req.body.existingImageId) {
+			blog.imageFile = req.body.existingImageId;
 		}
 
 		if (publishAction === 'publish') {
@@ -264,6 +262,8 @@ const blogTagsUpdate = async (blogToUpdate, updatedData) => {
 };
 
 exports.blogImageUpdate = async (req, res, next) => {
+	validateRequestData(req, res);
+
 	const { id } = req.params;
 	try {
 		const blogToUpdate = await Blog.findById(id).populate('imageFile');
@@ -273,12 +273,23 @@ exports.blogImageUpdate = async (req, res, next) => {
 
 		if (req.file && req.file.id) {
 			const imageFileIdForUpdate = await getImageFileIdForUpdate(req, blogToUpdate);
-
 			blogToUpdate.imageFile = imageFileIdForUpdate;
-			await blogToUpdate.save();
+			blogToUpdate.save();
+
 			res.status(200).json(blogToUpdate);
 		} else {
-			return res.status(400).json({ message: 'Uploaded blog picture not found' });
+			blogToUpdate.imageFile = req.body.existingImageId || null;
+			blogToUpdate.save();
+
+			if (req.body?.credit) {
+				await ImageFile.findByIdAndUpdate(
+					req.body.existingImageId,
+					{ credit: req.body.credit },
+					{ new: true }
+				);
+			}
+
+			res.status(200).json(blogToUpdate);
 		}
 	} catch (err) {
 		next(err);
@@ -310,7 +321,7 @@ exports.blogLikeUpdate = async (req, res, next) => {
 
 exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
-
+	console.log(req.body);
 	try {
 		// Get the current state of blog by ID excluding slug property
 		const blogToUpdate = await Blog.findById(id);

@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { authenticateUser, upload } = require('../utils/middleware');
+const { authenticateUser, upload, transformReqBodyValues } = require('../utils/middleware');
 const {
 	categoryCreate,
 	categories,
@@ -13,6 +13,7 @@ const {
 	categoriesWithLatestBlogs
 } = require('../controllers/category');
 const Author = require('../models/author');
+const { validateCreditInfo } = require('../controllers/image-file');
 
 const router = express.Router();
 
@@ -32,7 +33,9 @@ router.get('/:id', categoryFetch);
 router.post('/',
 	authenticateUser(Author),
 	upload.single('categoryImage'),
+	transformReqBodyValues,
 	validateCategory,
+	validateCreditInfo,
 	categoryCreate
 );
 
@@ -40,6 +43,8 @@ router.post('/',
 router.put('/:id/image',
 	authenticateUser(Author),
 	upload.single('categoryImage'),
+	transformReqBodyValues,
+	validateCreditInfo,
 	categoryImageUpdate);
 
 // Update an existing category

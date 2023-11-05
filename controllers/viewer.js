@@ -5,6 +5,7 @@ const { body, validationResult } = require('express-validator');
 const { SECRET_KEY } = require('../utils/config');
 
 const Viewer = require('../models/viewer');
+const { validateRequestData } = require('./reusables');
 
 exports.validateViewerRegistration = [
 	body('name')
@@ -62,10 +63,7 @@ exports.viewerRegister = async (req, res, next) => {
 };
 
 exports.viewerLogin = async (req, res, next) => {
-	const errors = validationResult(req);
-	if (!errors.isEmpty()) {
-		return res.status(400).json({ errors: errors.array() });
-	}
+	validateRequestData(req, res);
 
 	const { username, password } = req.body;
 	try {

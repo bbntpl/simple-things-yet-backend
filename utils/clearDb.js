@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const { MONGODB_URI } = require('./config');
 const clearUploads = require('./clearUploads');
 const Category = require('../models/category');
+const ImageFile = require('../models/image-file');
 
 async function connectDB() {
 	try {
@@ -25,6 +26,7 @@ async function clearDb() {
 	await Author.deleteMany({});
 	await Viewer.deleteMany({});
 	await Category.deleteMany({});
+	await ImageFile.deleteMany({});
 }
 
 connectDB()
