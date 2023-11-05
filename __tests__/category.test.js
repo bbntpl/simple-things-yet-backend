@@ -11,18 +11,18 @@ const {
 	populateCategoriesDb,
 	categoriesInDb,
 	loginAuthor,
-	createCategoryWithImage
+	createCategoryWithImage,
+	clearDb
 } = require('../utils/tests/helpers');
 const { sampleAuthor1, sampleCategory1, sampleCategory2 } = require('../utils/tests/dataset');
 const clearUploads = require('../utils/clearUploads');
 
 let token;
-let server;
-
+const server = initApp();
 const request = supertest(app);
 
 beforeAll(async () => {
-	server = await initApp();
+	await clearDb();
 });
 
 beforeEach(async () => {
@@ -222,6 +222,7 @@ describe('update of category', () => {
 		const updatedCategoryResponse = await request
 			.put(`/api/categories/${newCategory.body.id}/image`)
 			.attach('categoryImage', filePath, { filename: 'image.png' })
+			.field('existingImageId', 'NULL') //must be added every image update
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 

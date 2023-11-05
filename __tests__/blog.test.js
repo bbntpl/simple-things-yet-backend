@@ -13,6 +13,7 @@ const {
 	loginViewer,
 	saveBlog,
 	publishBlog,
+	clearDb,
 } = require('../utils/tests/helpers');
 const {
 	sampleAuthor1,
@@ -28,14 +29,10 @@ const Blog = require('../models/blog');
 const Viewer = require('../models/viewer');
 const Category = require('../models/category');
 
-let server;
+
 let token;
-
+const server = initApp();
 const request = supertest(app);
-
-beforeAll(async () => {
-	server = await initApp();
-});
 
 const getBlogs = async () => {
 	return await request.get('/api/blogs')
@@ -49,6 +46,10 @@ const getBlog = async (blogId) => {
 		.expect('Content-Type', /application\/json/)
 		.expect(200);
 };
+
+beforeAll(async () => {
+	await clearDb();
+});
 
 describe('fetching blogs', () => {
 	beforeEach(async () => {

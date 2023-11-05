@@ -14,13 +14,8 @@ const {
 const { sampleAuthor1, sampleTag1, sampleTag2 } = require('../utils/tests/dataset');
 
 let token;
-let server;
-
+const server = initApp();
 const request = supertest(app);
-
-beforeAll(async () => {
-	server = await initApp();
-});
 
 beforeEach(async () => {
 	await Tag.deleteMany({});
@@ -177,7 +172,7 @@ describe('update of tag', () => {
 });
 
 afterAll(() => {
-	mongoose.connection.close();
 	server.close();
+	mongoose.connection.close();
 	console.log('Tag Tests: Close the server');
 });

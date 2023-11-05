@@ -7,7 +7,7 @@ const {
 	imageDocsInDb,
 	loginAuthor,
 	publishBlog,
-	createCategoryWithImage
+	createCategoryWithImage,
 } = require('../utils/tests/helpers');
 const {
 	sampleAuthor1,
@@ -23,11 +23,10 @@ const Blog = require('../models/blog');
 const Category = require('../models/category');
 
 let token;
-let server;
+const server = initApp();
 const request = supertest(app);
 
 beforeAll(async () => {
-	server = await initApp();
 	token = await loginAuthor(request, sampleAuthor1);
 });
 
@@ -166,6 +165,7 @@ describe('creation of image file doc', () => {
 		const updatedAuthorResponse = await request
 			.put('/api/author/update/image')
 			.attach('authorImage', filePath, { filename: 'image.png' })
+			.field('existingImageId', 'NULL') // must be added every image update
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 		expect(updatedAuthorResponse.body.imageFile).toBeDefined();
@@ -265,6 +265,7 @@ describe('deletion of image file doc', () => {
 		await request
 			.put('/api/author/update/image')
 			.attach('authorImage', filePath, { filename: 'image.png' })
+			.field('existingImageId', 'NULL') // must be added every image update
 			.set('Authorization', `Bearer ${token}`)
 			.expect(200);
 
@@ -351,8 +352,8 @@ describe('update of image file doc', () => {
 	});
 });
 
-afterAll(async () => {
-	await mongoose.connection.close();
+afterAll(() => {
+	mongoose.connection.close();
 	server.close();
 	console.log('Image Docs Tests: Close the server');
 });

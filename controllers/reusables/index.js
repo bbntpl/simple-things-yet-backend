@@ -3,10 +3,29 @@ const getGfs = require('../../utils/gfs');
 const ImageFile = require('../../models/image-file');
 const { validationResult } = require('express-validator');
 
-exports.validateRequestData = (req, res) => {
+exports.validateRequestData = (req, res, next) => {
 	const errors = validationResult(req);
 	if (!errors.isEmpty()) {
 		return res.status(400).json({ errors: errors.array() });
+	}
+	next();
+};
+
+exports.updateImageFileDocRefs = async (imageFileRefs, docId) => {
+	const { toBeReplaced, toBeAdded } = imageFileRefs;
+	console.log(toBeReplaced, toBeAdded, docId);
+	// These two being equal means no image file ref changes so no need for unnecessary updates
+	if (toBeReplaced == toBeAdded) return;
+	if (toBeReplaced) {
+		const imageDoc = await ImageFile.findById(toBeReplaced);
+		imageDoc.referencedDocs = imageDoc.referencedDocs.filter(doc => docId === doc);
+		await imageDoc.save();
+	}
+
+	if (toBeAdded) {
+		const imageDoc = await ImageFile.findById(toBeAdded);
+		imageDoc.referencedDocs.push(docId);
+		await imageDoc.save();
 	}
 };
 
@@ -14,7 +33,7 @@ exports.getImageFileIdForUpdate = async (req, doc) => {
 	const doesImageAsReplacementExists = await this.hasImageInGridFS(req.body.existingImageId);
 	const doesImageFileDocAsReplacementExists = await ImageFile.findById(req.body.existingImageId);
 	let newImageFileId;
-	console.log(req.body, doesImageAsReplacementExists, doesImageFileDocAsReplacementExists);
+
 	// Create a new image file doc using the uploaded image file
 	if (req.body.existingImageId === null
 		&& !doesImageFileDocAsReplacementExists

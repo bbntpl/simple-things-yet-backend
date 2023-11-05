@@ -7,17 +7,17 @@ const { sampleViewer1, sampleViewer2 } = require('../utils/tests/dataset');
 const {
 	createInitialViewer,
 	viewersInDb,
-	loginViewer
+	loginViewer,
+	clearDb
 } = require('../utils/tests/helpers');
 const Viewer = require('../models/viewer');
 
 let token;
-let server;
-
+const server = initApp();
 const request = supertest(app);
 
 beforeAll(async () => {
-	server = await initApp();
+	await clearDb();
 });
 
 describe('fetch viewer object', () => {

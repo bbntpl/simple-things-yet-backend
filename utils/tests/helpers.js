@@ -32,6 +32,16 @@ const deleteDbsForBlogTests = async ({
 	}
 };
 
+const clearDb = async () => {
+	await Blog.deleteMany({});
+	await Comment.deleteMany({});
+	await Tag.deleteMany({});
+	await Author.deleteMany({});
+	await Viewer.deleteMany({});
+	await Category.deleteMany({});
+	await ImageFile.deleteMany({});
+};
+
 const createInitialUser = async (UserModel, sampleUser) => {
 	const { password, ...userWithoutPassword } = sampleUser;
 
@@ -267,4 +277,5 @@ module.exports = {
 	commentsInDb,
 	viewersInDb,
 	imageDocsInDb,
+	clearDb
 };

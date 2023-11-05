@@ -1,11 +1,8 @@
-const { body } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { default: mongoose } = require('mongoose');
 
 const Category = require('../models/category');
-const {
-	getImageFileIdForUpdate,
-	validateRequestData
-} = require('./reusables');
+const { getImageFileIdForUpdate, updateImageFileDocRefs } = require('./reusables');
 const {
 	handleSorting,
 	handleFiltering,
@@ -28,7 +25,10 @@ exports.validateCategory = [
 ];
 
 exports.categoryCreate = async (req, res, next) => {
-	validateRequestData(req, res);
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
 	const { name, description } = req.body;
 	try {
@@ -292,7 +292,10 @@ exports.categoryFetch = async (req, res, next) => {
 };
 
 exports.categoryImageUpdate = async (req, res, next) => {
-	validateRequestData(req, res);
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
 	const { id } = req.params;
 	try {
@@ -308,6 +311,11 @@ exports.categoryImageUpdate = async (req, res, next) => {
 
 			res.status(200).json(categoryToUpdate);
 		} else {
+			await updateImageFileDocRefs({
+				toBeReplaced: categoryToUpdate.imageFile,
+				toBeAdded: req.body.existingImageId || null
+			}, categoryToUpdate.id);
+
 			categoryToUpdate.imageFile = req.body.existingImageId || null;
 			categoryToUpdate.save();
 

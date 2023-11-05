@@ -10,9 +10,9 @@ const clearUploads = require('./clearUploads');
 const Category = require('../models/category');
 const ImageFile = require('../models/image-file');
 
-async function connectDB() {
+function connectDB() {
 	try {
-		await mongoose.connect(MONGODB_URI);
+		mongoose.connect(MONGODB_URI);
 	} catch (error) {
 		console.log(`Error connecting to MongoDB: ${error}`);
 	}

@@ -5,7 +5,7 @@ const { body, validationResult } = require('express-validator');
 const Author = require('../models/author');
 const { SECRET_KEY } = require('../utils/config');
 
-const { getImageFileIdForUpdate } = require('./reusables');
+const { getImageFileIdForUpdate, updateImageFileDocRefs } = require('./reusables');
 
 exports.validateEmail = [
 	body('email')
@@ -47,13 +47,17 @@ exports.authorImageUpdate = async (req, res, next) => {
 
 			res.status(200).json(updatedAuthor);
 		} else {
-			const updatedAuthor = await Author.findByIdAndUpdate(
-				author.id,
-				{ imageFile: req.body.existingImageId || null },
-				{ new: true }
-			);
+			const authorToUpdate = await Author.findById(author.id);
 
-			res.status(200).json(updatedAuthor);
+			await updateImageFileDocRefs({
+				toBeReplaced: authorToUpdate.imageFile,
+				toBeAdded: req.body.existingImageId || null
+			}, authorToUpdate.id);
+
+			authorToUpdate.imageFile = req.body.existingImageId || null;
+			authorToUpdate.save();
+
+			res.status(200).json(authorToUpdate);
 		}
 	} catch (err) {
 		next(err);

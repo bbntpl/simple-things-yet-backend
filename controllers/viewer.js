@@ -1,11 +1,9 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-
 const { body, validationResult } = require('express-validator');
-const { SECRET_KEY } = require('../utils/config');
 
+const { SECRET_KEY } = require('../utils/config');
 const Viewer = require('../models/viewer');
-const { validateRequestData } = require('./reusables');
 
 exports.validateViewerRegistration = [
 	body('name')
@@ -63,7 +61,10 @@ exports.viewerRegister = async (req, res, next) => {
 };
 
 exports.viewerLogin = async (req, res, next) => {
-	validateRequestData(req, res);
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
 	const { username, password } = req.body;
 	try {

@@ -11,8 +11,9 @@ const {
 	handleFiltering,
 	handleSorting
 } = require('../utils/query-handlers');
-const { getImageFileIdForUpdate, validateRequestData } = require('./reusables');
+const { getImageFileIdForUpdate, updateImageFileDocRefs } = require('./reusables');
 const { imageFileCreateAndSetRefId } = require('./image-file');
+const { validationResult } = require('express-validator');
 
 const insertBlogToTag = async (tagId, blogId) => {
 	try {
@@ -262,7 +263,10 @@ const blogTagsUpdate = async (blogToUpdate, updatedData) => {
 };
 
 exports.blogImageUpdate = async (req, res, next) => {
-	validateRequestData(req, res);
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
 	const { id } = req.params;
 	try {
@@ -278,6 +282,11 @@ exports.blogImageUpdate = async (req, res, next) => {
 
 			res.status(200).json(blogToUpdate);
 		} else {
+			await updateImageFileDocRefs({
+				toBeReplaced: blogToUpdate.imageFile,
+				toBeAdded: req.body.existingImageId || null
+			}, blogToUpdate.id);
+
 			blogToUpdate.imageFile = req.body.existingImageId || null;
 			blogToUpdate.save();
 
@@ -321,7 +330,6 @@ exports.blogLikeUpdate = async (req, res, next) => {
 
 exports.blogUpdate = async (req, res, next) => {
 	const { id, publishAction } = req.params;
-	console.log(req.body);
 	try {
 		// Get the current state of blog by ID excluding slug property
 		const blogToUpdate = await Blog.findById(id);

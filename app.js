@@ -31,15 +31,15 @@ mongoose.set('strictQuery', false);
 
 async function connectDB() {
 	try {
-		await mongoose.connect(MONGODB_URI);
+		mongoose.connect(MONGODB_URI);
 	} catch (error) {
 		console.log(`Error connecting to MongoDB: ${error}`);
 	}
 }
 
-async function initApp() {
+function initApp() {
 	try {
-		await connectDB();
+		connectDB();
 		const server = app.listen(PORT, function (err) {
 			if (err) {
 				console.log(`Error: ${err}`);

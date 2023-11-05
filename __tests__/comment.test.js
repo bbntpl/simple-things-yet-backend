@@ -9,6 +9,7 @@ const {
 	commentsInDb,
 	loginViewer,
 	createInitialViewer,
+	clearDb,
 } = require('../utils/tests/helpers');
 const {
 	sampleAuthor1,
@@ -20,13 +21,12 @@ const Comment = require('../models/comment');
 const Author = require('../models/author');
 const Blog = require('../models/blog');
 
-let server;
 let token;
-
+const server = initApp();
 const request = supertest(app);
 
 beforeAll(async () => {
-	server = await initApp();
+	await clearDb();
 });
 
 describe('fetch of comments', () => {

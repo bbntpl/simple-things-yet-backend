@@ -7,7 +7,7 @@ const { app, initApp } = require('../app');
 const { MONGODB_URI } = require('../utils/config');
 const Author = require('../models/author');
 const {
-	loginAuthor
+	loginAuthor, clearDb
 } = require('../utils/tests/helpers');
 
 const {
@@ -15,7 +15,7 @@ const {
 	sampleAuthor2,
 } = require('../utils/tests/dataset');
 
-let server;
+const server = initApp();
 const request = supertest(app);
 
 const getAuthorWithHashedPassword = async (sampleAuthor) => {
@@ -37,8 +37,7 @@ const getAuthor = async () => {
 };
 
 beforeAll(async () => {
-	server = await initApp();
-	await Author.deleteMany({});
+	await clearDb();
 });
 
 describe('Test database', () => {
@@ -211,8 +210,8 @@ describe('Update of author', () => {
 	});
 });
 
-afterAll(async () => {
-	await mongoose.connection.close();
+afterAll(() => {
+	mongoose.connection.close();
 	server.close();
 	console.log('Author Tests: Close the server');
 });
