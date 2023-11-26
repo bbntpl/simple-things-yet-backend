@@ -13,17 +13,18 @@ exports.validateRequestData = (req, res, next) => {
 
 exports.updateImageFileDocRefs = async (imageFileRefs, docId) => {
 	const { toBeReplaced, toBeAdded } = imageFileRefs;
-	console.log(toBeReplaced, toBeAdded, docId);
 	// These two being equal means no image file ref changes so no need for unnecessary updates
 	if (toBeReplaced == toBeAdded) return;
 	if (toBeReplaced) {
 		const imageDoc = await ImageFile.findById(toBeReplaced);
+		if (!imageDoc) return;
 		imageDoc.referencedDocs = imageDoc.referencedDocs.filter(doc => docId === doc);
 		await imageDoc.save();
 	}
 
 	if (toBeAdded) {
 		const imageDoc = await ImageFile.findById(toBeAdded);
+		if (!imageDoc) return;
 		imageDoc.referencedDocs.push(docId);
 		await imageDoc.save();
 	}

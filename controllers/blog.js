@@ -96,11 +96,13 @@ exports.blogCreate = async (req, res, next) => {
 	}
 };
 
-exports.totalPublishedBlogs = async (_req, res, next) => {
+exports.totalPublishedBlogs = async (req, res, next) => {
 	try {
-		const totalPublishedBlogs = Blog.countDocuments({
+		const filters = handleFiltering(req, ['category', 'tags']);
+		const totalPublishedBlogs = await Blog.countDocuments({
 			isPublished: true,
 			isPrivate: false,
+			...filters
 		});
 		res.json({ size: totalPublishedBlogs });
 	} catch (err) {
@@ -181,8 +183,7 @@ exports.blogFetch = async (req, res, next) => {
 
 
 exports.publishedBlogFetch = async (req, res, next) => {
-	const filters = handleFiltering(req, ['slug, id']);
-
+	const filters = handleFiltering(req, ['slug', 'id']);
 	try {
 		const blog = await Blog.findOne({
 			isPrivate: false,
@@ -368,7 +369,6 @@ exports.blogUpdate = async (req, res, next) => {
 		const authorId = blogPropsToUpdate['author']
 			? blogPropsToUpdate.author.id
 			: req.body.author.id;
-
 		const updatedBlog = await Blog.findByIdAndUpdate(
 			id,
 			{

@@ -1,7 +1,7 @@
 const { default: mongoose } = require('mongoose');
 
 const handlePagination = (req) => {
-	const { page = 1, limit = 20 } = req.query;
+	const { page = 1, limit = 12 } = req.query;
 	const skip = (Number(page) - 1) * Number(limit);
 	return { skip, limit: Number(limit) };
 };
@@ -11,7 +11,7 @@ const convertStringIdsToObjectIds = (filters, req) => {
 	filters.forEach(filter => {
 		if (req.query[filter]) {
 			if (filter === 'id') {
-				query[filter] = mongoose.Types.ObjectId(req.query[filter]);
+				query[filter] = new mongoose.Types.ObjectId(req.query[filter]);
 			} else {
 				query[filter] = req.query[filter];
 			}
@@ -20,18 +20,25 @@ const convertStringIdsToObjectIds = (filters, req) => {
 	return query;
 };
 
-const handleExcludedIds = (query, req) => {
+const handleIds = (query, req) => {
 	if (req.query.excludeIds) {
 		const idsToExclude = req.query.excludeIds.split(',')
-			.map(id => mongoose.Types.ObjectId(id));
-		query.id = { $nin: idsToExclude };
+			.map(id => new mongoose.Types.ObjectId(id));
+		query._id = { $nin: idsToExclude };
 	}
+	if (req.query.tags) {
+		const idsToMatch = req.query.tags.split(',')
+			.map(id => new mongoose.Types.ObjectId(id));
+		query.tags = { $elemMatch: { $in: idsToMatch } };
+	}
+
 	return query;
 };
 
 const handleFiltering = (req, filters = []) => {
 	let query = convertStringIdsToObjectIds(filters, req);
-	query = handleExcludedIds(query, req);
+	query = handleIds(query, req);
+
 	return query;
 };
 

@@ -62,84 +62,112 @@ exports.categories = async (req, res, next) => {
 	}
 };
 
-exports.categoriesWithPublishedBlogs = async (req, res, next) => {
+const getCategoryPublishedBlogsPipeline = ({ filters, sorts }) => {
+	const pipeline = [
+		// Stage 1: Append the referenced blog documents to the current category document
+		{
+			$lookup: {
+				from: 'blogs',
+				localField: '_id',
+				foreignField: 'category',
+				as: 'blogs'
+			}
+		},
+		// Stage 2: Filter out categories without published blogs
+		...Object.entries({
+			...filters,
+			'blogs.isPublished': true,
+			'blogs.isPrivate': false,
+		}).map(([key, value]) => ({ $match: { [key]: value } })),
+		// Stage 3: Add new field that extract the published & public blogs ids
+		{
+			$addFields: {
+				publishedBlogs: {
+					$filter: {
+						input: {
+							$map: {
+								input: '$blogs',
+								as: 'blog',
+								in: {
+									$cond: {
+										if: {
+											$and: [
+												{ $eq: ['$$blog.isPrivate', false] },
+												{ $eq: ['$$blog.isPublished', true] },
+											]
+										},
+										then: '$$blog._id',
+										else: null
+									}
+								}
+							}
+						},
+						as: 'blog',
+						cond: { $ne: ['$$blog', null] }
+					}
+				}
+			}
+		},
+		// Stage 4: Add id field
+		{
+			$addFields: {
+				id: '$_id'
+			}
+		},
+		// Stage 5: Remove non needed embedded documents and fields
+		{
+			$unset: ['blogs', '__v', '_id']
+		},
+		// Stage 6: Add own size of total published blogs
+		{
+			$addFields: {
+				totalPublishedBlogs: {
+					$size: '$publishedBlogs'
+				}
+			}
+		},
+		{ $sort: sorts },
+	];
+
+	return pipeline;
+};
+
+exports.categoryWithPublishedBlogs = async (req, res, next) => {
+	const { slug } = req.params;
 	try {
-		const pagination = handlePagination(req);
 		const filters = handleFiltering(req, []);
 		const sorts = handleSorting(req, {
 			asc: { name: 1 },
 			desc: { name: -1 }
 		});
 
-		const excludeIds = req.query.excludeIds === '' ? []
-			: req.query.excludeIds.split(',').map(id => {
-				return new mongoose.Types.ObjectId(id);
-			});
 
-		const pipeline = [
-			// Stage 1: Append the referenced blog documents to the current category document
-			{
-				$lookup: {
-					from: 'blogs',
-					localField: '_id',
-					foreignField: 'category',
-					as: 'blogs'
-				}
-			},
-			// Stage 2: Filter out categories without published blogs
-			{
-				$match: {
-					'blogs.isPublished': true,
-					'blogs.isPrivate': false,
-				}
-			},
-			// Stage 3: Add new field that extract the published & public blogs ids
-			{
-				$addFields: {
-					publishedBlogs: {
-						$filter: {
-							input: {
-								$map: {
-									input: '$blogs',
-									as: 'blog',
-									in: {
-										$cond: {
-											if: {
-												$and: [
-													{ $eq: ['$$blog.isPrivate', false] },
-													{ $eq: ['$$blog.isPublished', true] },
-													{ $not: { $in: ['$$blog._id', excludeIds || []] } }
-												]
-											},
-											then: '$$blog._id',
-											else: null
-										}
-									}
-								}
-							},
-							as: 'blog',
-							cond: { $ne: ['$$blog', null] }
-						}
-					}
-				}
-			},
-			// Stage 4: Add id field
-			{
-				$addFields: {
-					id: '$_id'
-				}
-			},
-			// Stage 5: Remove non needed embedded documents and fields
-			{
-				$unset: ['blogs', '__v', '_id']
-			},
-			...Object.entries(filters)
-				.map(([key, value]) => ({ $match: { [key]: value } })),
-			{ $sort: sorts },
-			{ $skip: pagination.skip },
-			{ $limit: pagination.limit }
-		];
+		const pipeline = getCategoryPublishedBlogsPipeline({ filters, sorts });
+		const category = slug ? await Category.findOne({ slug }) : null;
 
+		if (!category) {
+			return res.status(404).json({ error: 'Category not found' });
+		}
+
+		const result = await Category.aggregate([
+			{ $match: { _id: category._id } },
+			...pipeline,
+		]);
+		res.json(result[0]);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.categoriesWithPublishedBlogs = async (req, res, next) => {
+	try {
+		const filters = handleFiltering(req, []);
+		const sorts = handleSorting(req, {
+			asc: { name: 1 },
+			desc: { name: -1 }
+		});
+
+		const pipeline = getCategoryPublishedBlogsPipeline({ filters, sorts });
 		const categories = await Category.aggregate(pipeline);
 		res.json(categories);
 	} catch (err) {
@@ -158,10 +186,9 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 			smaller: { totalPublishedBlogs: - 1 },
 		});
 
-		console.log(req.query);
 		const excludeIds = req.query.excludeIds === undefined
 			|| req.query.excludeIds === '' ? []
-			: req.query.excludeIds.map(id => {
+			: req.query.excludeIds.split(',').map(id => {
 				return new mongoose.Types.ObjectId(id);
 			});
 
@@ -233,12 +260,18 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 					},
 				},
 			},
-			// Stage 5: Remove non needed embedded documents (or/and its fields)
+			// Stage 5: Add id field to the document
+			{
+				$addFields: {
+					id: '$_id'
+				}
+			},
+			// Stage 6: Remove non needed embedded documents (or/and its fields)
 			// and fields
 			{
-				$unset: ['blogs', '__v', 'publishedBlogs._id', 'publishedBlogs.__v']
+				$unset: ['blogs', '__v', '_id', 'publishedBlogs._id', 'publishedBlogs.__v']
 			},
-			// Stage 6: Add own size of total published blogs
+			// Stage 7: Add own size of total published blogs
 			{
 				$addFields: {
 					totalPublishedBlogs: {
@@ -246,7 +279,7 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 					}
 				}
 			},
-			// Stage 7: Only match categories between is greater than equal to 3
+			// Stage 8: Only match categories between is greater than equal to 3
 			{
 				$match: {
 					$expr: {
@@ -254,7 +287,7 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 					}
 				}
 			},
-			// Stage 8: Only get the first 2 blogs (maximum)
+			// Stage 9: Only get the first 2 blogs (maximum)
 			{
 				$addFields: {
 					publishedBlogs: {
@@ -285,6 +318,16 @@ exports.categoryFetch = async (req, res, next) => {
 	const { id } = req.params;
 	try {
 		const category = await Category.findById(id);
+		res.json(category);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.categoryFetchBySlug = async (req, res, next) => {
+	const { slug } = req.params;
+	try {
+		const category = await Category.findOne({ slug });
 		res.json(category);
 	} catch (err) {
 		next(err);

@@ -57,10 +57,126 @@ exports.tags = async (req, res, next) => {
 	}
 };
 
-exports.tagFetch = async (req, res, next) => {
+const getTagPublishedBlogsPipeline = ({ filters, sorts }) => {
+	const pipeline = [
+		// Stage 1: Append the referenced blog documents to the current tags document
+		{
+			$lookup: {
+				from: 'blogs',
+				localField: '_id',
+				foreignField: 'tags',
+				as: 'blogs'
+			}
+		},
+		// Stage 2: Filter out categories without published blogs and excluded ids
+		...Object.entries({
+			...filters,
+			'blogs.isPublished': true,
+			'blogs.isPrivate': false,
+		}).map(([key, value]) => ({ $match: { [key]: value } })),
+		// Stage 3: Add new field that extract the published & public blogs ids
+		{
+			$addFields: {
+				publishedBlogs: {
+					$filter: {
+						input: {
+							$map: {
+								input: '$blogs',
+								as: 'blog',
+								in: {
+									$cond: {
+										if: {
+											$and: [
+												{ $eq: ['$$blog.isPrivate', false] },
+												{ $eq: ['$$blog.isPublished', true] },
+											]
+										},
+										then: '$$blog._id',
+										else: null
+									}
+								}
+							}
+						},
+						as: 'blog',
+						cond: { $ne: ['$$blog', null] }
+					}
+				}
+			}
+		},
+		// Stage 4: Add id field
+		{
+			$addFields: {
+				id: '$_id'
+			}
+		},
+		// Stage 5: Remove non needed embedded documents and fields
+		{
+			$unset: ['blogs', '__v', '_id']
+		},
+		{ $sort: sorts },
+	];
+
+	return pipeline;
+};
+
+exports.tagsWithPublishedBlogs = async (req, res, next) => {
+	try {
+		const filters = handleFiltering(req, []);
+		const sorts = handleSorting(req, {
+			asc: { name: 1 },
+			desc: { name: -1 },
+		});
+
+		const pipeline = getTagPublishedBlogsPipeline({ filters, sorts });
+		const tags = await Tag.aggregate(pipeline);
+		res.json(tags);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.tagWithPublishedBlogs = async (req, res, next) => {
+	const { slug } = req.params;
+
+	try {
+		const filters = handleFiltering(req, []);
+		const sorts = handleSorting(req, {
+			asc: { name: 1 },
+			desc: { name: -1 },
+		});
+
+		const pipeline = getTagPublishedBlogsPipeline({ filters, sorts });
+		const tag = slug ? await Tag.findOne({ slug }) : null;
+
+		if (!tag) {
+			return res.status(404).json({ error: 'Tag not found' });
+		}
+
+		// Add additional stage to match only one tag by ID
+		const result = await Tag.aggregate([
+			{ $match: { _id: tag._id } },
+			...pipeline,
+		]);
+		res.json(result[0]);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.tagFetchById = async (req, res, next) => {
 	const { id } = req.params;
 	try {
 		const tag = await Tag.findById(id);
+		res.json(tag);
+	} catch (err) {
+		next(err);
+	}
+};
+
+exports.tagFetchBySlug = async (req, res, next) => {
+	const { slug } = req.params;
+	try {
+		const tag = await Tag.findOne({ slug });
 		res.json(tag);
 	} catch (err) {
 		next(err);

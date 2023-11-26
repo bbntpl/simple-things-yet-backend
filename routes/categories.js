@@ -10,7 +10,9 @@ const {
 	categoryDelete,
 	validateCategory,
 	categoriesWithPublishedBlogs,
-	categoriesWithLatestBlogs
+	categoriesWithLatestBlogs,
+	categoryFetchBySlug,
+	categoryWithPublishedBlogs
 } = require('../controllers/category');
 const Author = require('../models/author');
 const { validateCreditInfo } = require('../controllers/image-file');
@@ -28,6 +30,12 @@ router.get('/with-published-blogs', categoriesWithPublishedBlogs);
 
 // Fetch a specific category by ID
 router.get('/:id', categoryFetch);
+
+// Fetch a specific category by slug
+router.get('/:slug/slug', categoryFetchBySlug);
+
+// Fetch a specific category by slug with published blogs
+router.get('/:slug/slug/with-published-blogs', categoryWithPublishedBlogs);
 
 // Create a new category
 router.post('/',
