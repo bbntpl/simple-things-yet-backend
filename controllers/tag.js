@@ -136,7 +136,7 @@ exports.tagsWithPublishedBlogs = async (req, res, next) => {
 };
 
 exports.tagWithPublishedBlogs = async (req, res, next) => {
-	const { slug } = req.params;
+	const { id, slug } = req.params;
 
 	try {
 		const filters = handleFiltering(req, []);
@@ -146,7 +146,9 @@ exports.tagWithPublishedBlogs = async (req, res, next) => {
 		});
 
 		const pipeline = getTagPublishedBlogsPipeline({ filters, sorts });
-		const tag = slug ? await Tag.findOne({ slug }) : null;
+		const tag = id ? await Tag.findById(id)
+			: slug ? await Tag.findOne({ slug })
+				: null;
 
 		if (!tag) {
 			return res.status(404).json({ error: 'Tag not found' });

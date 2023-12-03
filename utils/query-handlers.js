@@ -11,7 +11,7 @@ const convertStringIdsToObjectIds = (filters, req) => {
 	filters.forEach(filter => {
 		if (req.query[filter]) {
 			if (filter === 'id') {
-				query[filter] = new mongoose.Types.ObjectId(req.query[filter]);
+				query._id = new mongoose.Types.ObjectId(req.query[filter]);
 			} else {
 				query[filter] = req.query[filter];
 			}

@@ -133,7 +133,7 @@ const getCategoryPublishedBlogsPipeline = ({ filters, sorts }) => {
 };
 
 exports.categoryWithPublishedBlogs = async (req, res, next) => {
-	const { slug } = req.params;
+	const { id, slug } = req.params;
 	try {
 		const filters = handleFiltering(req, []);
 		const sorts = handleSorting(req, {
@@ -143,7 +143,9 @@ exports.categoryWithPublishedBlogs = async (req, res, next) => {
 
 
 		const pipeline = getCategoryPublishedBlogsPipeline({ filters, sorts });
-		const category = slug ? await Category.findOne({ slug }) : null;
+		const category = id ? await Category.findById(id)
+			: slug ? await Category.findOne({ slug })
+				: null;
 
 		if (!category) {
 			return res.status(404).json({ error: 'Category not found' });
@@ -216,29 +218,16 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 				$addFields: {
 					publishedBlogs: {
 						$filter: {
-							input: {
-								$map: {
-									input: '$blogs',
-									as: 'blog',
-									in: {
-										$cond: {
-											if: {
-												$and: [
-													{ $eq: ['$$blog.isPrivate', false] },
-													{ $eq: ['$$blog.isPublished', true] },
-													{ $not: { $in: ['$$blog._id', excludeIds || []] } }
-												]
-											},
-											then: '$$blog',
-											else: null
-										}
-									}
-								}
-							},
+							input: '$blogs',
 							as: 'blog',
-							cond: { $ne: ['$$blog', null] }
+							cond: {
+								$and: [
+									{ $eq: ['$$blog.isPrivate', false] },
+									{ $eq: ['$$blog.isPublished', true] },
+								]
+							}
 						}
-					}
+					},
 				}
 			},
 			// Stage 4: Add new field blog id
@@ -251,9 +240,7 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 							in: {
 								$mergeObjects: [
 									'$$blog',
-									{
-										id: '$$blog._id',
-									},
+									{ id: '$$blog._id' },
 								],
 							},
 						},
@@ -279,24 +266,27 @@ exports.categoriesWithLatestBlogs = async (req, res, next) => {
 					}
 				}
 			},
-			// Stage 8: Only match categories between is greater than equal to 3
+			// Stage 8: Only match categories with at least 2 published blogs
 			{
 				$match: {
-					$expr: {
-						$gte: ['$totalPublishedBlogs', 2],
-					}
+					totalPublishedBlogs: { $gte: 2 },
 				}
 			},
 			// Stage 9: Only get the first 2 blogs (maximum)
 			{
 				$addFields: {
 					publishedBlogs: {
-						$slice: ['$publishedBlogs', 0, {
-							$min: [
-								{ $size: '$publishedBlogs' },
-								2
-							]
-						}]
+						$filter: {
+							input: {
+								$slice: ['$publishedBlogs', -2]
+							},
+							as: 'blog',
+							cond: {
+								$not: {
+									$in: ['$$blog.id', excludeIds]
+								}
+							}
+						}
 					}
 				}
 			},
