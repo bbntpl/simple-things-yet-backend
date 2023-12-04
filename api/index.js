@@ -14,6 +14,7 @@ const {
 const {
 	NODE_ENV,
 } = require('../utils/config');
+const routes = require('../routes');
 const authorRouter = require('../routes/author');
 const blogsRouter = require('../routes/blogs');
 const tagsRouter = require('../routes/tags');
@@ -38,7 +39,8 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(logger);
 app.use(tokenExtractor);
 
-// Setup routes
+// Setup route endpoints
+app.use('/api', routes);
 app.use('/api/author', authorRouter);
 app.use('/api/blogs', blogsRouter);
 app.use('/api/tags', tagsRouter);

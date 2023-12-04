@@ -38,4 +38,3 @@ router.put('/update/image',
 );
 
 module.exports = router;
-
