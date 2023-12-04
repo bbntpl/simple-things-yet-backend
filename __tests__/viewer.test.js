@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 const supertest = require('supertest');
 const bcrypt = require('bcrypt');
 
-const { app, initApp } = require('../app');
+const app = require('../api');
+const { initApp } = require('../init');
 const { sampleViewer1, sampleViewer2 } = require('../utils/tests/dataset');
 const {
 	createInitialViewer,
@@ -13,7 +14,7 @@ const {
 const Viewer = require('../models/viewer');
 
 let token;
-const server = initApp();
+const server = initApp(app);
 const request = supertest(app);
 
 beforeAll(async () => {

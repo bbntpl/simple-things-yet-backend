@@ -5,8 +5,8 @@
 	"main": "app.js",
 	"scripts": {
 		"start": "node app.js",
-		"start:test": "NODE_ENV=test nodemon app.js",
-		"start:dev": "NODE_ENV=development nodemon app.js",
+		"start:test": "NODE_ENV=test nodemon api/index.js",
+		"start:dev": "NODE_ENV=development nodemon api/index.js",
 		"clearDb": "NODE_ENV=development node ./utils/clearDb.js",
 		"lint": "npx eslint .",
 		"test": "NODE_ENV=test jest --detectOpenHandles  --verbose --runInBand"

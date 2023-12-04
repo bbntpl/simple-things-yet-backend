@@ -1,7 +1,8 @@
 const supertest = require('supertest');
 const mongoose = require('mongoose');
 
-const { app, initApp } = require('../app');
+const app = require('../api');
+const { initApp } = require('../init');
 const Tag = require('../models/tag');
 const Blog = require('../models/blog');
 const {
@@ -14,7 +15,7 @@ const {
 const { sampleAuthor1, sampleTag1, sampleTag2 } = require('../utils/tests/dataset');
 
 let token;
-const server = initApp();
+const server = initApp(app);
 const request = supertest(app);
 
 beforeEach(async () => {

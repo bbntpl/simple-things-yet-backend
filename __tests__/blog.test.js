@@ -2,7 +2,8 @@ const supertest = require('supertest');
 const mongoose = require('mongoose');
 const path = require('path');
 
-const { app, initApp } = require('../app');
+const app = require('../api');
+const { initApp } = require('../init');
 const {
 	deleteDbsForBlogTests,
 	loginAuthor,
@@ -31,7 +32,7 @@ const Category = require('../models/category');
 
 
 let token;
-const server = initApp();
+const server = initApp(app);
 const request = supertest(app);
 
 const getBlogs = async () => {

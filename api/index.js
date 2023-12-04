@@ -9,49 +9,24 @@ const {
 	errorHandler,
 	serverErrorHandler,
 	unknownEndpoint
-} = require('./utils/middleware');
+} = require('../utils/middleware');
 
 const {
-	PORT,
-	MONGODB_URI,
 	NODE_ENV,
-} = require('./utils/config');
-const authorRouter = require('./routes/author');
-const blogsRouter = require('./routes/blogs');
-const tagsRouter = require('./routes/tags');
-const commentsRouter = require('./routes/comments');
-const viewersRouter = require('./routes/viewers');
-const categoriesRouter = require('./routes/categories');
-const imageFilesRouter = require('./routes/image-files');
+} = require('../utils/config');
+const authorRouter = require('../routes/author');
+const blogsRouter = require('../routes/blogs');
+const tagsRouter = require('../routes/tags');
+const commentsRouter = require('../routes/comments');
+const viewersRouter = require('../routes/viewers');
+const categoriesRouter = require('../routes/categories');
+const imageFilesRouter = require('../routes/image-files');
+const { initApp } = require('../init');
 
 const app = express();
 
 // Setup connection to MongoDB
 mongoose.set('strictQuery', false);
-
-async function connectDB() {
-	try {
-		mongoose.connect(MONGODB_URI);
-	} catch (error) {
-		console.log(`Error connecting to MongoDB: ${error}`);
-	}
-}
-
-function initApp() {
-	try {
-		connectDB();
-		const server = app.listen(PORT, function (err) {
-			if (err) {
-				console.log(`Error: ${err}`);
-			}
-			console.log(`App is connected to port ${PORT}`);
-		});
-
-		return server;
-	} catch (err) {
-		console.log(`Error: ${err}`);
-	}
-}
 
 //Use middleware functions
 app.use(helmet({
@@ -62,8 +37,6 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(logger);
 app.use(tokenExtractor);
-
-app.use(express.urlencoded({ extended: true }));
 
 // Setup routes
 app.use('/api/author', authorRouter);
@@ -80,7 +53,7 @@ app.use(errorHandler);
 app.use(serverErrorHandler);
 
 if (NODE_ENV !== 'test') {
-	initApp();
+	initApp(app);
 }
 
-module.exports = { app, initApp };
+module.exports = app;

@@ -1,7 +1,8 @@
 const supertest = require('supertest');
 const mongoose = require('mongoose');
 
-const { app, initApp } = require('../app');
+const app = require('../api');
+const { initApp } = require('../init');
 const {
 	deleteDbsForBlogTests,
 	loginAuthor,
@@ -22,7 +23,7 @@ const Author = require('../models/author');
 const Blog = require('../models/blog');
 
 let token;
-const server = initApp();
+const server = initApp(app);
 const request = supertest(app);
 
 beforeAll(async () => {

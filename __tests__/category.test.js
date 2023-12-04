@@ -2,7 +2,8 @@ const supertest = require('supertest');
 const mongoose = require('mongoose');
 const path = require('path');
 
-const { app, initApp } = require('../app');
+const app = require('../api');
+const { initApp } = require('../init');
 const Category = require('../models/category');
 const Blog = require('../models/blog');
 const {
@@ -18,7 +19,7 @@ const { sampleAuthor1, sampleCategory1, sampleCategory2 } = require('../utils/te
 const clearUploads = require('../utils/clearUploads');
 
 let token;
-const server = initApp();
+const server = initApp(app);
 const request = supertest(app);
 
 beforeAll(async () => {

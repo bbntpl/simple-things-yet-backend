@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const path = require('path');
 
-const { app, initApp } = require('../app');
+const app = require('../api');
+const { initApp } = require('../init');
 const { MONGODB_URI } = require('../utils/config');
 const Author = require('../models/author');
 const {
@@ -15,7 +16,7 @@ const {
 	sampleAuthor2,
 } = require('../utils/tests/dataset');
 
-const server = initApp();
+const server = initApp(app);
 const request = supertest(app);
 
 const getAuthorWithHashedPassword = async (sampleAuthor) => {
