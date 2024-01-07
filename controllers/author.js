@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 
 const Author = require('../models/author');
-const { SECRET_KEY } = require('../utils/config');
+const { SECRET_KEY, AUTHOR_TOKEN_EXPIRATION_MS } = require('../utils/config');
 
 const { getImageFileIdForUpdate, updateImageFileDocRefs } = require('./reusables');
 
@@ -191,8 +191,7 @@ exports.authorLogin = async (req, res, next) => {
 		const token = jwt.sign(
 			authorForToken,
 			SECRET_KEY,
-			// expires in 7 days
-			{ expiresIn: '7d' }
+			{ expiresIn: AUTHOR_TOKEN_EXPIRATION_MS }
 		);
 
 		res.json({

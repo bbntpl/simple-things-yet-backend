@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 
-const { SECRET_KEY } = require('../utils/config');
+const { SECRET_KEY, USER_TOKEN_EXPIRATION_MS } = require('../utils/config');
 const Viewer = require('../models/viewer');
 
 exports.validateViewerRegistration = [
@@ -87,7 +87,7 @@ exports.viewerLogin = async (req, res, next) => {
 		const token = jwt.sign(
 			userForToken,
 			SECRET_KEY,
-			{ expiresIn: '2d' }
+			{ expiresIn: USER_TOKEN_EXPIRATION_MS }
 		);
 
 		res.send({
